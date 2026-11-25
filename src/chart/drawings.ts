@@ -83,7 +83,12 @@ export class DrawingManager {
 
   // ---------------------------------------------------------------- market --
 
-  async setMarket(id: string): Promise<void> {
+  /**
+   * Loads the drawings stored under `id`. If nothing was ever stored there,
+   * starts from the drawings of `seedId` (used when drawings become shared by
+   * asset: the market's own drawings carry over the first time).
+   */
+  async setMarket(id: string, seedId?: string): Promise<void> {
     this.flushSave()
     this.marketId = id
     this.silently(() => this.chart.removeOverlay({ groupId: GROUP }))
@@ -91,7 +96,16 @@ export class DrawingManager {
     this.select(null)
     this.undoStack = []
     this.redoStack = []
-    const saved = (await drawingsDb.get<SavedDrawing[]>(this.key(id)).catch(() => undefined)) ?? []
+    let stored = await drawingsDb.get<SavedDrawing[]>(this.key(id)).catch(() => undefined)
+    if (stored === undefined && seedId && seedId !== id) {
+      stored = await drawingsDb.get<SavedDrawing[]>(this.key(seedId)).catch(() => undefined)
+      // Keep the carried-over drawings under the new key right away, so the
+      // asset's other markets see them too.
+      if (Array.isArray(stored) && stored.length) {
+        drawingsDb.put(this.key(id), stored).catch(err => this.ev.onSaveError?.(err))
+      }
+    }
+    const saved = Array.isArray(stored) ? stored : []
     if (this.marketId !== id) return
     this.lastSnapshot = JSON.stringify(saved)
     this.pendingRestore = saved

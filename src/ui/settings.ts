@@ -14,9 +14,11 @@ const NOT_BACKED_UP = ['chartit:catalog:v1']
 export interface Prefs {
   candle: CandleType
   scale: PriceScale
+  /** Same drawings for the same asset on every exchange */
+  shareDrawings: boolean
 }
 
-const DEFAULTS: Prefs = { candle: 'candle_solid', scale: 'normal' }
+const DEFAULTS: Prefs = { candle: 'candle_solid', scale: 'normal', shareDrawings: true }
 
 const CANDLES: Array<[CandleType, string, string]> = [
   ['candle_solid', 'Velas', 'ctCandles'],
@@ -39,7 +41,8 @@ export function readPrefs(): Prefs {
   }
   return {
     candle: CANDLES.some(([id]) => id === saved.candle) ? (saved.candle as CandleType) : DEFAULTS.candle,
-    scale: SCALES.some(([id]) => id === saved.scale) ? (saved.scale as PriceScale) : DEFAULTS.scale
+    scale: SCALES.some(([id]) => id === saved.scale) ? (saved.scale as PriceScale) : DEFAULTS.scale,
+    shareDrawings: typeof saved.shareDrawings === 'boolean' ? saved.shareDrawings : DEFAULTS.shareDrawings
   }
 }
 
@@ -56,7 +59,10 @@ export class SettingsMenu {
   private popup: Popup
   private prefs: Prefs
 
-  constructor(private chart: Chart, private hooks: { onShortcuts: () => void; beforeImport: () => void }) {
+  constructor(
+    private chart: Chart,
+    private hooks: { onShortcuts: () => void; beforeImport: () => void; onShareDrawings: () => void }
+  ) {
     this.prefs = readPrefs()
     const btn = $('settingsBtn')
     btn.innerHTML = icon('gear', 18)
@@ -121,6 +127,16 @@ export class SettingsMenu {
     note.className = 'settings-note'
     note.textContent = 'Se guardan solo en este navegador. Haz un respaldo para llevarlos a otro equipo o no perderlos.'
     body.appendChild(note)
+    const share = document.createElement('button')
+    share.className = 'menu-item switch-item'
+    share.setAttribute('role', 'switch')
+    share.setAttribute('aria-checked', String(this.prefs.shareDrawings))
+    share.innerHTML = `${icon('layers', 18)}<span class="mi-text"><span>Mismos dibujos en todas las fuentes</span><small>BTC de Binance, Bybit y Hyperliquid comparten dibujos</small></span><span class="switch${this.prefs.shareDrawings ? ' on' : ''}"></span>`
+    share.onclick = () => {
+      this.set({ shareDrawings: !this.prefs.shareDrawings })
+      this.hooks.onShareDrawings()
+    }
+    body.appendChild(share)
     body.appendChild(this.item('download', 'Descargar respaldo', 'Dibujos, listas y favoritos en un archivo', () => void this.exportBackup()))
     body.appendChild(this.item('upload', 'Restaurar respaldo', 'Desde un archivo .json de Chart-It', () => this.pickBackup()))
     const protectedNote = document.createElement('p')

@@ -10,6 +10,7 @@ import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/r
 import { timeframeById } from './data/timeframes'
 import type { Market, Timeframe } from './data/types'
 import { liveEvents } from './data/util'
+import { assetKey } from './data/assets'
 import { requestPersistentStorage } from './store/db'
 import { DrawingMenu } from './ui/contextMenu'
 import { DrawingList } from './ui/drawingList'
@@ -256,6 +257,11 @@ function persist(): void {
   history.replaceState(null, '', `#${encodeURIComponent(market.id)}/${tf.id}`)
 }
 
+/** Where the drawings of a market are kept: per asset (shared across exchanges) or per market. */
+function drawingsKey(m: Market): string {
+  return readPrefs().shareDrawings ? `asset:${assetKey(m)}` : m.id
+}
+
 async function setMarket(m: Market): Promise<void> {
   const token = ++loadToken
   market = m
@@ -266,7 +272,7 @@ async function setMarket(m: Market): Promise<void> {
   renderQuote()
   watchlist.setCurrent(m.id)
   persist()
-  await drawings.setMarket(m.id)
+  await drawings.setMarket(drawingsKey(m), m.id)
   // Another market was picked while the drawings loaded: that call takes over.
   if (token !== loadToken) return
   chart.setSymbol({ ticker: `${m.ticker} · ${adapterOf(m.source).label}`, id: m.id, pricePrecision: m.pricePrecision, volumePrecision: m.volumePrecision })
@@ -366,7 +372,11 @@ new IndicatorsPanel(chart)
 applyPrefs(chart, readPrefs())
 
 const shortcuts = new ShortcutsSheet()
-new SettingsMenu(chart, { onShortcuts: () => shortcuts.open(), beforeImport: () => drawings.flushSave() })
+new SettingsMenu(chart, {
+  onShortcuts: () => shortcuts.open(),
+  beforeImport: () => drawings.flushSave(),
+  onShareDrawings: () => void setMarket(market)
+})
 
 // ------------------------------------------------------------- screenshot --
 
