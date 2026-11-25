@@ -1,23 +1,4 @@
-import type { Category, Timeframe } from './types'
-
-const MIN = 60_000
-const HOUR = 60 * MIN
-const DAY = 24 * HOUR
-
-export const TIMEFRAMES: Timeframe[] = [
-  { id: '1m', label: '1m', ms: MIN, period: { type: 'minute', span: 1 } },
-  { id: '5m', label: '5m', ms: 5 * MIN, period: { type: 'minute', span: 5 } },
-  { id: '15m', label: '15m', ms: 15 * MIN, period: { type: 'minute', span: 15 } },
-  { id: '30m', label: '30m', ms: 30 * MIN, period: { type: 'minute', span: 30 } },
-  { id: '1h', label: '1H', ms: HOUR, period: { type: 'hour', span: 1 } },
-  { id: '4h', label: '4H', ms: 4 * HOUR, period: { type: 'hour', span: 4 } },
-  { id: '1d', label: '1D', ms: DAY, period: { type: 'day', span: 1 } },
-  { id: '1w', label: '1S', ms: 7 * DAY, period: { type: 'week', span: 1 } }
-]
-
-export function timeframeById(id: string): Timeframe {
-  return TIMEFRAMES.find(t => t.id === id) ?? TIMEFRAMES[4]
-}
+import type { Category } from './types'
 
 /** "0.01000000" -> 2, "1" -> 0, "0.5" -> 1 */
 export function decimalsFromStep(step: string | number): number {

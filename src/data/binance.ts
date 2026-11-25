@@ -15,9 +15,9 @@ interface BnSymbol {
 type BnKline = [number, string, string, string, string, string, number, string]
 interface BnTicker { symbol: string; lastPrice: string; priceChangePercent: string }
 
-const INTERVAL: Record<string, string> = {
-  '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w'
-}
+const INTERVAL: Record<string, string> = Object.fromEntries(
+  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'].map(i => [i, i])
+)
 
 function toBar(k: BnKline): KLineData {
   return { timestamp: k[0], open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5], turnover: +k[7] }
@@ -44,6 +44,7 @@ function makeBinance(futures: boolean): Adapter {
     id,
     label: futures ? 'Binance TradFi' : 'Binance',
     short: futures ? 'BN·TF' : 'BN',
+    intervals: INTERVAL,
 
     async loadMarkets() {
       const url = futures ? `${rest}/exchangeInfo` : `${rest}/exchangeInfo?symbolStatus=TRADING`

@@ -18,6 +18,8 @@ export class SymbolSearch {
 
   constructor(private onPick: (m: Market) => void) {
     $('searchIcon').innerHTML = icon('search')
+    $('searchClose').innerHTML = icon('close', 18)
+    $('searchClose').onclick = () => this.close()
     const chips = $('searchChips')
     for (const [id, label] of CHIPS) {
       const b = document.createElement('button')

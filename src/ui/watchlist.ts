@@ -61,6 +61,8 @@ export class Watchlist {
   private render(): void {
     this.body.innerHTML = ''
     const ms = this.markets()
+    const count = document.getElementById('wlCount')
+    if (count) count.textContent = ms.length ? String(ms.length) : ''
     if (ms.length === 0) {
       const d = document.createElement('div')
       d.className = 'wl-empty'

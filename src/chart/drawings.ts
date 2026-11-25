@@ -1,5 +1,6 @@
 import type { Chart, DeepPartial, Overlay, OverlayCreate, OverlayStyle, Point } from 'klinecharts'
 import { drawingsDb } from '../store/db'
+import { FREEHAND_TOOLS, TEXT_TOOLS } from './overlays'
 import { DRAW_COLORS, drawingStyles } from './theme'
 
 const GROUP = 'drawings'
@@ -154,7 +155,7 @@ export class DrawingManager {
 
   async editSelectedText(): Promise<void> {
     const o = this.selectedId ? this.chart.getOverlays({ id: this.selectedId })[0] : undefined
-    if (!o || o.name !== 'ciText') return
+    if (!o || !TEXT_TOOLS.has(o.name)) return
     await this.editText(o)
   }
 
@@ -207,12 +208,12 @@ export class DrawingManager {
   private handlers(): Partial<OverlayCreate> {
     return {
       onDrawEnd: ({ overlay }) => {
-        if (overlay.name === 'ciText') {
+        if (TEXT_TOOLS.has(overlay.name)) {
           void this.editText(overlay, true)
         } else {
           this.commit()
         }
-        if (this.stayInTool || overlay.name === 'brush') {
+        if (this.stayInTool || FREEHAND_TOOLS.has(overlay.name)) {
           // keep drawing with the same tool
           setTimeout(() => this.startTool(overlay.name), 0)
         } else {
@@ -232,7 +233,7 @@ export class DrawingManager {
         if (this.selectedId === overlay.id) this.select(null)
       },
       onDoubleClick: ({ overlay }) => {
-        if (overlay.name === 'ciText') void this.editText(overlay)
+        if (TEXT_TOOLS.has(overlay.name)) void this.editText(overlay)
       },
       onRightClick: event => {
         // Right click never deletes by accident: it selects instead.

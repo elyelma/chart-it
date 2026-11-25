@@ -6,6 +6,9 @@ const INFO = 'https://api.hyperliquid.xyz/info'
 const WS = 'wss://api.hyperliquid.xyz/ws'
 /** "" = main perp dex (crypto), "xyz" = traditional markets dex */
 const DEXES = ['', 'xyz']
+const INTERVAL: Record<string, string> = Object.fromEntries(
+  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d', '3d', '1w', '1M'].map(i => [i, i])
+)
 
 interface HlAsset { name: string; szDecimals: number; isDelisted?: boolean }
 interface HlCtx { markPx: string; prevDayPx: string; midPx?: string | null }
@@ -31,6 +34,7 @@ export const hyperliquid: Adapter = {
   id: 'hyperliquid',
   label: 'Hyperliquid',
   short: 'HL',
+  intervals: INTERVAL,
 
   async loadMarkets() {
     const out: Market[] = []
@@ -64,7 +68,7 @@ export const hyperliquid: Adapter = {
     const startTime = endTime - tf.ms * Math.min(limit, 5000)
     const rows = await info<HlCandle[]>({
       type: 'candleSnapshot',
-      req: { coin: m.symbol, interval: tf.id, startTime, endTime }
+      req: { coin: m.symbol, interval: INTERVAL[tf.id], startTime, endTime }
     })
     return rows
       .filter(c => before === null || c.t < before)
@@ -72,7 +76,7 @@ export const hyperliquid: Adapter = {
   },
 
   subscribe(m: Market, tf: Timeframe, onBar: (bar: KLineData) => void) {
-    const subscription = { type: 'candle', coin: m.symbol, interval: tf.id }
+    const subscription = { type: 'candle', coin: m.symbol, interval: INTERVAL[tf.id] }
     const sock = new LiveSocket(
       WS,
       ws => ws.send(JSON.stringify({ method: 'subscribe', subscription })),
@@ -80,7 +84,7 @@ export const hyperliquid: Adapter = {
         const msg = raw as { channel?: string; data?: HlCandle }
         if (msg.channel !== 'candle' || !msg.data) return
         const c = msg.data
-        if (c.s !== m.symbol || c.i !== tf.id) return
+        if (c.s !== m.symbol || c.i !== INTERVAL[tf.id]) return
         onBar({ timestamp: c.t, open: +c.o, high: +c.h, low: +c.l, close: +c.c, volume: +c.v })
       },
       { message: JSON.stringify({ method: 'ping' }), everyMs: 30_000 }

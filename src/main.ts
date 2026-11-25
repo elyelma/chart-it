@@ -1,17 +1,22 @@
+import '@fontsource-variable/inter'
 import './style.css'
 import './chart/overlays'
 import { init, type Chart, type KLineData } from 'klinecharts'
 import { DrawingManager } from './chart/drawings'
 import { TOOLS } from './chart/overlays'
 import { CHART_STYLES, COLORS } from './chart/theme'
+import { hideVolume, showVolume } from './chart/volume'
+import { isBuilt, loadBars, subscribeBars } from './data/bars'
 import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/registry'
+import { timeframeById } from './data/timeframes'
 import type { Market, Timeframe } from './data/types'
-import { TIMEFRAMES, timeframeById } from './data/util'
 import { requestPersistentStorage } from './store/db'
 import { Dock } from './ui/dock'
 import { dialog, installTooltips, toast } from './ui/feedback'
 import { icon, LOGO } from './ui/icons'
+import { closeTopPopup, panelHeader, placeBelow, Popup } from './ui/popup'
 import { SymbolSearch } from './ui/symbolSearch'
+import { TimeframePicker } from './ui/tfPicker'
 import { formatPrice, Watchlist } from './ui/watchlist'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -19,7 +24,8 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 // ------------------------------------------------------------------ state --
 
 const LAST_KEY = 'chartit:last'
-const IND_KEY = 'chartit:indicators'
+// v2: the default became one volume pane without moving averages
+const IND_KEY = 'chartit:indicators:v2'
 const UI_KEY = 'chartit:ui'
 
 const FALLBACK: Market = {
@@ -67,10 +73,10 @@ chart.setDataLoader({
       callback([], { backward: false, forward: true })
       return
     }
-    if (type === 'init') setStatus('Cargando velas…')
+    if (type === 'init') setStatus(isBuilt(m, t) ? `Armando velas de ${t.label}…` : 'Cargando velas…')
     try {
       const before = type === 'forward' ? timestamp : null
-      let bars = await adapterOf(m.source).getBars(m, t, before, type === 'init' ? 600 : 800)
+      let bars = await loadBars(m, t, before, type === 'init' ? 600 : 800)
       if (token !== loadToken) return
       if (before !== null) bars = bars.filter(b => b.timestamp < before)
       callback(bars, { forward: bars.length > 0, backward: false })
@@ -93,7 +99,7 @@ chart.setDataLoader({
   subscribeBar: ({ callback }) => {
     unsubscribe?.()
     const token = loadToken
-    unsubscribe = adapterOf(market.source).subscribe(market, tf, bar => {
+    unsubscribe = subscribeBars(market, tf, bar => {
       if (token !== loadToken) return
       callback(bar)
       lastBar = bar
@@ -107,6 +113,8 @@ chart.setDataLoader({
 })
 
 new ResizeObserver(() => chart.resize()).observe($('chart'))
+// Canvas text is drawn before the web font arrives: redraw once it is ready.
+void document.fonts.load("600 11px 'Inter Variable'").then(() => chart.setStyles(CHART_STYLES))
 if (import.meta.env.DEV) Object.assign(window, { __chart: chart })
 
 // ---------------------------------------------------------------- drawings --
@@ -125,15 +133,9 @@ $('brand').innerHTML = `${LOGO}<span>Chart<b>-It</b></span>`
 $('shotBtn').innerHTML = icon('camera')
 $('listBtn').innerHTML = icon('list')
 $('indBtn').innerHTML = `${icon('fx')}<span>Indicadores</span>`
+$('symCaret').innerHTML = icon('chevDown', 14)
 
-const tfGroup = $('tfGroup')
-for (const t of TIMEFRAMES) {
-  const b = document.createElement('button')
-  b.textContent = t.label
-  b.dataset.tf = t.id
-  b.onclick = () => setTimeframe(t)
-  tfGroup.appendChild(b)
-}
+const tfPicker = new TimeframePicker(tf, t => setTimeframe(t))
 
 let quoteChange: number | null = null
 let quoteRaf = 0
@@ -152,17 +154,16 @@ function renderQuote(): void {
 
 function renderHeader(): void {
   $('symTicker').textContent = market.ticker
-  $('symSrc').textContent = `${adapterOf(market.source).label} · ${market.name}`
-  tfGroup.querySelectorAll<HTMLElement>('button').forEach(b => b.classList.toggle('on', b.dataset.tf === tf.id))
+  const perp247 = market.kind === 'perp' && market.category !== 'crypto'
+  $('symSrc').textContent = `${adapterOf(market.source).label} · ${market.name}` + (perp247 ? ' · perpetuo 24/7' : '')
+  $('symbolBtn').title = perp247
+    ? 'Contrato perpetuo: sigue al precio del subyacente y cotiza también cuando su mercado está cerrado. (Ctrl+K para buscar)'
+    : 'Buscar símbolo (Ctrl+K)'
+  tfPicker.setCurrent(tf)
   const star = $('starBtn')
   star.innerHTML = icon('star')
   star.classList.toggle('on', watchlist.has(market.id))
   star.title = watchlist.has(market.id) ? 'Quitar de la lista' : 'Añadir a la lista'
-  $('chartNote').title =
-    market.kind === 'perp' && market.category !== 'crypto' ? 'Contrato perpetuo: sigue al precio del subyacente y cotiza también cuando su mercado está cerrado.' : ''
-  $('chartNote').textContent =
-    `Datos: ${adapterOf(market.source).label}` +
-    (market.kind === 'perp' && market.category !== 'crypto' ? ' · perpetuo 24/7' : '')
   document.title = `${market.ticker} · Chart-It`
 }
 
@@ -210,6 +211,8 @@ function setListOpen(open: boolean): void {
   localStorage.setItem(UI_KEY, JSON.stringify(ui))
 }
 $('listBtn').onclick = () => setListOpen(!ui.list)
+$('wlClose').innerHTML = icon('close', 16)
+$('wlClose').onclick = () => setListOpen(false)
 setListOpen(ui.list)
 
 async function refreshTickers(): Promise<void> {
@@ -251,23 +254,34 @@ void loadAllMarkets().then(({ markets, failed }) => {
 // ------------------------------------------------------------- indicators --
 
 const MAIN_IND: Array<[string, string]> = [
-  ['MA', 'Media móvil (MA)'], ['EMA', 'Media exponencial (EMA)'], ['BOLL', 'Bandas de Bollinger'], ['SAR', 'Parabólico SAR']
+  ['VOL', 'Volumen'], ['MA', 'Media móvil (MA)'], ['EMA', 'Media exponencial (EMA)'], ['BOLL', 'Bandas de Bollinger'], ['SAR', 'Parabólico SAR']
 ]
 const SUB_IND: Array<[string, string]> = [
-  ['VOL', 'Volumen'], ['RSI', 'RSI'], ['MACD', 'MACD'], ['KDJ', 'Estocástico KDJ'],
+  ['RSI', 'RSI'], ['MACD', 'MACD'], ['KDJ', 'Estocástico KDJ'],
   ['OBV', 'On-Balance Volume'], ['CCI', 'CCI'], ['WR', 'Williams %R'], ['DMI', 'DMI / ADX']
 ]
 let indicators = readJson<string[]>(IND_KEY, ['VOL'])
 
 function addIndicator(name: string): void {
-  if (MAIN_IND.some(([n]) => n === name)) chart.createIndicator({ name, paneId: 'candle_pane' }, true)
-  else chart.createIndicator(name)
+  if (name === 'VOL') {
+    showVolume(chart)
+  } else if (MAIN_IND.some(([n]) => n === name)) {
+    chart.createIndicator({ name, paneId: 'candle_pane' }, true)
+  } else {
+    chart.createIndicator(name)
+  }
 }
+if (!indicators.includes('VOL')) hideVolume(chart)
 indicators.forEach(addIndicator)
 
 const pop = $('indPopover')
+const indPopup = new Popup(pop, [$('indBtn')], { onOpen: () => {
+  renderIndicators()
+  placeBelow(pop, $('indBtn'))
+} })
 function renderIndicators(): void {
   pop.innerHTML = ''
+  pop.appendChild(panelHeader('Indicadores', () => indPopup.close()))
   const section = (title: string, list: Array<[string, string]>) => {
     const h = document.createElement('h4')
     h.textContent = title
@@ -283,7 +297,8 @@ function renderIndicators(): void {
           addIndicator(name)
         } else {
           indicators = indicators.filter(n => n !== name)
-          chart.removeIndicator({ name })
+          if (name === 'VOL') hideVolume(chart)
+          else chart.removeIndicator({ name })
         }
         localStorage.setItem(IND_KEY, JSON.stringify(indicators))
       }
@@ -298,21 +313,6 @@ function renderIndicators(): void {
   section('Sobre el gráfico', MAIN_IND)
   section('En panel aparte', SUB_IND)
 }
-$('indBtn').onclick = e => {
-  e.stopPropagation()
-  if (!pop.hidden) {
-    pop.hidden = true
-    return
-  }
-  renderIndicators()
-  const r = $('indBtn').getBoundingClientRect()
-  pop.style.top = `${r.bottom + 6}px`
-  pop.style.left = `${Math.min(r.left, window.innerWidth - 310)}px`
-  pop.hidden = false
-}
-document.addEventListener('mousedown', e => {
-  if (!pop.hidden && !pop.contains(e.target as Node) && e.target !== $('indBtn')) pop.hidden = true
-})
 
 // ------------------------------------------------------------- screenshot --
 
@@ -332,6 +332,10 @@ document.addEventListener('keydown', e => {
   const target = e.target as HTMLElement
   const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
   if (!$('dialog').hidden) return
+  if (e.key === 'Escape' && closeTopPopup()) {
+    e.preventDefault()
+    return
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     search.open()
@@ -352,7 +356,6 @@ document.addEventListener('keydown', e => {
   if (e.altKey) return
   if (e.key === 'Escape') {
     dock.select('cursor')
-    pop.hidden = true
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     drawings.removeSelected()
   } else if (e.key === '/') {

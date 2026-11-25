@@ -39,10 +39,13 @@ export interface Adapter {
   id: SourceId
   label: string
   short: string
+  /** Timeframe id → the exchange's own interval name, for every interval it offers */
+  intervals: Record<string, string>
   loadMarkets(): Promise<Market[]>
   /**
-   * Candles in ascending order. If `before` is given, only candles strictly older
-   * than that timestamp; otherwise the most recent ones.
+   * Candles in ascending order, for a timeframe listed in `intervals`. If
+   * `before` is given, only candles strictly older than that timestamp;
+   * otherwise the most recent ones.
    */
   getBars(m: Market, tf: Timeframe, before: number | null, limit: number): Promise<KLineData[]>
   /** Live updates of the current candle. Returns an unsubscribe function. */

@@ -1,17 +1,22 @@
 import { registerLocale, type DeepPartial, type Styles } from 'klinecharts'
 
+/** Same typeface as the interface, so the chart and the menus read as one product. */
+export const FONT = "'Inter Variable', 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif"
+
 export const COLORS = {
-  bg: '#0A0D13',
-  text: '#8A93A6',
-  textStrong: '#E6EAF2',
-  line: '#1E2533',
-  up: '#36E2B4',
-  down: '#FF5D73',
-  accent: '#7C6CFF'
+  bg: '#0B0D12',
+  text: '#6E7584',
+  text2: '#A3A9B6',
+  textStrong: '#E8EAEF',
+  line: 'rgba(255,255,255,0.06)',
+  up: '#33D6A6',
+  down: '#F2566C',
+  accent: '#8B7BFF',
+  label: '#232833'
 }
 
 /** Swatches offered for drawings. First one is the default. */
-export const DRAW_COLORS = ['#FFB547', '#7C6CFF', '#4FC3FF', '#36E2B4', '#FF5D73', '#FF7AE0', '#F2F4F8']
+export const DRAW_COLORS = ['#FFB547', '#8B7BFF', '#4FC3FF', '#33D6A6', '#F2566C', '#FF7AE0', '#F2F4F8']
 
 export function alpha(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16)
@@ -22,21 +27,33 @@ export function alpha(hex: string, a: number): string {
 export function drawingStyles(color: string, size = 2, dashed = false): DeepPartial<Styles['overlay']> {
   return {
     line: { color, size, style: dashed ? 'dashed' : 'solid', dashedValue: [6, 4] },
-    polygon: { color: alpha(color, 0.12), borderColor: color, borderSize: size, borderStyle: dashed ? 'dashed' : 'solid' },
-    rect: { color: alpha(color, 0.12), borderColor: color, borderSize: size },
-    circle: { color: alpha(color, 0.12), borderColor: color, borderSize: size },
+    polygon: { color: alpha(color, 0.1), borderColor: color, borderSize: size, borderStyle: dashed ? 'dashed' : 'solid' },
+    rect: { color: alpha(color, 0.1), borderColor: color, borderSize: size },
+    circle: { color: alpha(color, 0.1), borderColor: color, borderSize: size },
     arc: { color, size },
-    text: { color, backgroundColor: 'transparent', borderColor: 'transparent', size: 14, weight: 600 },
-    point: { color, borderColor: alpha(color, 0.35), activeColor: color, activeBorderColor: alpha(color, 0.35) }
+    text: { color, backgroundColor: 'transparent', borderColor: 'transparent', size: 14, weight: 600, family: FONT },
+    point: { color, borderColor: alpha(color, 0.3), activeColor: color, activeBorderColor: alpha(color, 0.3), radius: 4, activeRadius: 5 }
   }
 }
 
-const axisText = { color: COLORS.text, size: 11, family: 'inherit' }
+const tickText = { color: COLORS.text, size: 11, family: FONT, weight: 'normal' }
+const axisLabel = {
+  backgroundColor: COLORS.label,
+  borderColor: COLORS.label,
+  color: COLORS.textStrong,
+  borderRadius: 4,
+  family: FONT,
+  size: 11,
+  paddingLeft: 6,
+  paddingRight: 6,
+  paddingTop: 4,
+  paddingBottom: 4
+}
 
 export const CHART_STYLES: DeepPartial<Styles> = {
   grid: {
-    horizontal: { color: 'rgba(255,255,255,0.035)', style: 'solid' },
-    vertical: { color: 'rgba(255,255,255,0.035)', style: 'solid' }
+    horizontal: { color: 'rgba(255,255,255,0.028)', style: 'solid' },
+    vertical: { color: 'rgba(255,255,255,0.028)', style: 'solid' }
   },
   candle: {
     bar: {
@@ -51,68 +68,71 @@ export const CHART_STYLES: DeepPartial<Styles> = {
       noChangeWickColor: COLORS.text
     },
     priceMark: {
-      high: { color: COLORS.text },
-      low: { color: COLORS.text },
+      high: { color: COLORS.text, textFamily: FONT, textSize: 10 },
+      low: { color: COLORS.text, textFamily: FONT, textSize: 10 },
       last: {
         upColor: COLORS.up,
         downColor: COLORS.down,
         noChangeColor: COLORS.text,
-        line: { style: 'dashed', dashedValue: [3, 3], size: 1 },
-        text: { borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 3, paddingBottom: 3 }
+        line: { style: 'dashed', dashedValue: [2, 3], size: 1 },
+        text: { family: FONT, size: 11, weight: 600, borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 4, paddingBottom: 4 }
       }
     },
     tooltip: {
       showRule: 'always',
       showType: 'standard',
-      title: { color: COLORS.textStrong },
-      legend: { color: COLORS.text, size: 11 }
+      title: { color: COLORS.textStrong, family: FONT, size: 12, weight: 600, marginLeft: 10, marginTop: 8 },
+      legend: { color: COLORS.text2, family: FONT, size: 11, marginLeft: 10, marginTop: 4 }
     }
   },
   indicator: {
     ohlc: { upColor: alpha(COLORS.up, 0.55), downColor: alpha(COLORS.down, 0.55), noChangeColor: COLORS.text },
-    bars: [{ upColor: alpha(COLORS.up, 0.45), downColor: alpha(COLORS.down, 0.45), noChangeColor: COLORS.text }],
+    bars: [{ upColor: alpha(COLORS.up, 0.4), downColor: alpha(COLORS.down, 0.4), noChangeColor: COLORS.text }],
     lines: [
       { color: '#FFB547', size: 1 },
       { color: '#4FC3FF', size: 1 },
       { color: '#FF7AE0', size: 1 },
-      { color: '#36E2B4', size: 1 },
-      { color: '#7C6CFF', size: 1 }
+      { color: '#33D6A6', size: 1 },
+      { color: '#8B7BFF', size: 1 }
     ],
-    tooltip: { legend: { color: COLORS.text, size: 11 }, title: { color: COLORS.textStrong, size: 11 } }
+    tooltip: {
+      title: { color: COLORS.textStrong, family: FONT, size: 11, weight: 600, marginLeft: 10 },
+      legend: { color: COLORS.text2, family: FONT, size: 11, marginLeft: 10 }
+    }
   },
   xAxis: {
     axisLine: { color: COLORS.line },
-    tickLine: { color: COLORS.line },
-    tickText: axisText
+    tickLine: { show: false },
+    tickText: tickText
   },
   yAxis: {
     axisLine: { color: COLORS.line },
-    tickLine: { color: COLORS.line },
-    tickText: axisText
+    tickLine: { show: false },
+    tickText: tickText
   },
-  separator: { color: COLORS.line, activeBackgroundColor: alpha(COLORS.accent, 0.25) },
+  separator: { color: COLORS.line, activeBackgroundColor: alpha(COLORS.accent, 0.2) },
   crosshair: {
     horizontal: {
-      line: { color: 'rgba(230,234,242,0.35)', dashedValue: [4, 4] },
-      text: { backgroundColor: '#2A3242', borderColor: '#2A3242', color: COLORS.textStrong, borderRadius: 4 }
+      line: { color: 'rgba(232,234,239,0.28)', style: 'dashed', dashedValue: [3, 4], size: 1 },
+      text: axisLabel
     },
     vertical: {
-      line: { color: 'rgba(230,234,242,0.35)', dashedValue: [4, 4] },
-      text: { backgroundColor: '#2A3242', borderColor: '#2A3242', color: COLORS.textStrong, borderRadius: 4 }
+      line: { color: 'rgba(232,234,239,0.28)', style: 'dashed', dashedValue: [3, 4], size: 1 },
+      text: axisLabel
     }
   },
   overlay: drawingStyles(DRAW_COLORS[0])
 }
 
 registerLocale('es-MX', {
-  time: 'Hora: ',
-  open: 'A: ',
-  high: 'Máx: ',
-  low: 'Mín: ',
-  close: 'C: ',
-  volume: 'Vol: ',
-  turnover: 'Monto: ',
-  change: 'Var: ',
+  time: 'Hora ',
+  open: 'A ',
+  high: 'Máx ',
+  low: 'Mín ',
+  close: 'C ',
+  volume: 'Vol ',
+  turnover: 'Monto ',
+  change: 'Var ',
   second: 's',
   minute: '',
   hour: 'H',

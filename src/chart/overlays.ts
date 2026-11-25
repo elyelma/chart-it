@@ -109,27 +109,327 @@ registerOverlay({
   }
 })
 
+// ------------------------------------------------------------------ helpers --
+
+/** Colour and width the person picked for this drawing. */
+function lineLook(styles: unknown): { color: string; size: number } {
+  const line = (styles as { line?: { color?: string; size?: number } } | null)?.line
+  return { color: line?.color ?? COLORS.accent, size: line?.size ?? 2 }
+}
+
+function tint(color: string, a: number): string {
+  return /^#[0-9a-f]{6}$/i.test(color) ? alpha(color, a) : color
+}
+
+/** Point where the line from `p` in direction `d` leaves the chart on the right. */
+function extendRight(p: Coordinate, d: Coordinate, width: number): Coordinate {
+  if (d.x > 0.0001) {
+    const t = (width - p.x) / d.x
+    return { x: p.x + d.x * t, y: p.y + d.y * t }
+  }
+  const len = Math.hypot(d.x, d.y) || 1
+  return { x: p.x + (d.x / len) * 4000, y: p.y + (d.y / len) * 4000 }
+}
+
+function label(x: number, y: number, text: string, color: string, below: boolean): OverlayFigure {
+  return {
+    type: 'text',
+    ignoreEvent: true,
+    attrs: { x, y: below ? y + 8 : y - 8, text, align: 'center', baseline: below ? 'top' : 'bottom' },
+    styles: {
+      style: 'fill', color: '#0A0D13', backgroundColor: color, size: 12, weight: 600,
+      borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 4, paddingBottom: 4
+    }
+  }
+}
+
+const PERIOD_MS: Record<string, number> = {
+  second: 1000, minute: 60_000, hour: 3_600_000, day: 86_400_000, week: 604_800_000, month: 2_592_000_000, year: 31_536_000_000
+}
+
+function duration(ms: number): string {
+  const min = Math.round(ms / 60_000)
+  const d = Math.floor(min / 1440)
+  const h = Math.floor((min % 1440) / 60)
+  const m = min % 60
+  const parts = d ? [`${d}d`, h ? `${h}h` : ''] : h ? [`${h}h`, m ? `${m}m` : ''] : [`${m}m`]
+  return parts.filter(Boolean).join(' ')
+}
+
+// ------------------------------------------------------------------ shapes --
+
+registerOverlay({
+  name: 'ciCircle',
+  totalStep: 3,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates }) => {
+    if (coordinates.length < 2) return []
+    const [c, e] = coordinates
+    return [{ type: 'circle', attrs: { x: c.x, y: c.y, r: Math.hypot(e.x - c.x, e.y - c.y) }, styles: { style: 'stroke_fill' } }]
+  }
+})
+
+registerOverlay({
+  name: 'ciTriangle',
+  totalStep: 4,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates }) => {
+    if (coordinates.length < 2) return []
+    if (coordinates.length === 2) return [{ type: 'line', attrs: { coordinates } }]
+    return [{ type: 'polygon', attrs: { coordinates }, styles: { style: 'stroke_fill' } }]
+  }
+})
+
+// --------------------------------------------------------------- freehand --
+
+registerOverlay({
+  name: 'ciMarker',
+  totalStep: 2,
+  drawingMode: 'continuous',
+  needDefaultPointFigure: false,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ coordinates, overlay }) => {
+    if (coordinates.length < 2) return []
+    const { color, size } = lineLook(overlay.styles)
+    return [{
+      type: 'line',
+      attrs: { coordinates },
+      styles: { color: tint(color, 0.35), size: Math.max(10, size * 6), style: 'solid', smooth: false, lineCap: 'round', lineJoin: 'round' }
+    }]
+  }
+})
+
+// ------------------------------------------------------------------- lines --
+
+registerOverlay({
+  name: 'ciCrossLine',
+  totalStep: 2,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, bounding }) => {
+    const [p] = coordinates
+    return [
+      { type: 'line', attrs: { coordinates: [{ x: 0, y: p.y }, { x: bounding.width, y: p.y }] } },
+      { type: 'line', attrs: { coordinates: [{ x: p.x, y: 0 }, { x: p.x, y: bounding.height }] } }
+    ]
+  }
+})
+
+// ------------------------------------------------------------------ marks --
+
+function signal(up: boolean): void {
+  registerOverlay({
+    name: up ? 'ciSignalUp' : 'ciSignalDown',
+    totalStep: 2,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: true,
+    createPointFigures: ({ coordinates, overlay }) => {
+      const [p] = coordinates
+      const { color } = lineLook(overlay.styles)
+      const s = up ? 1 : -1
+      // Arrow whose tip touches the clicked point.
+      const pts = [
+        { x: p.x, y: p.y }, { x: p.x + 9, y: p.y + 10 * s }, { x: p.x + 4, y: p.y + 10 * s },
+        { x: p.x + 4, y: p.y + 22 * s }, { x: p.x - 4, y: p.y + 22 * s }, { x: p.x - 4, y: p.y + 10 * s },
+        { x: p.x - 9, y: p.y + 10 * s }
+      ]
+      return [{ type: 'polygon', attrs: { coordinates: pts }, styles: { style: 'fill', color } }]
+    }
+  })
+}
+signal(true)
+signal(false)
+
+// -------------------------------------------------------------- fibonacci --
+
+const FIB_EXT = [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618]
+
+registerOverlay({
+  name: 'ciFibExtension',
+  totalStep: 4,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, overlay, yAxis, bounding, chart }) => {
+    const figures: OverlayFigure[] = [{ type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [4, 4] } }]
+    if (coordinates.length < 3 || !yAxis) return figures
+    const [a, b, c] = overlay.points.map(p => p.value ?? 0)
+    const left = Math.min(...coordinates.map(p => p.x))
+    const right = Math.max(bounding.width, left)
+    const precision = chart.getSymbol()?.pricePrecision ?? 2
+    for (const lv of FIB_EXT) {
+      const price = c + (b - a) * lv
+      const y = yAxis.convertToPixel(price)
+      figures.push({ type: 'line', attrs: { coordinates: [{ x: coordinates[2].x, y }, { x: right, y }] } })
+      figures.push({
+        type: 'text',
+        ignoreEvent: true,
+        attrs: { x: left, y, text: `${lv} (${price.toFixed(precision)})`, align: 'right', baseline: 'middle' },
+        styles: { style: 'fill', backgroundColor: 'transparent', size: 11, paddingRight: 6 }
+      })
+    }
+    return figures
+  }
+})
+
+// ---------------------------------------------------------------- channels --
+
+registerOverlay({
+  name: 'ciPitchfork',
+  totalStep: 4,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, bounding }) => {
+    if (coordinates.length < 2) return []
+    if (coordinates.length === 2) return [{ type: 'line', attrs: { coordinates } }]
+    const [a, b, c] = coordinates
+    const mid = { x: (b.x + c.x) / 2, y: (b.y + c.y) / 2 }
+    const d = { x: mid.x - a.x, y: mid.y - a.y }
+    return [
+      { type: 'line', attrs: { coordinates: [a, extendRight(a, d, bounding.width)] } },
+      { type: 'line', attrs: { coordinates: [b, extendRight(b, d, bounding.width)] } },
+      { type: 'line', attrs: { coordinates: [c, extendRight(c, d, bounding.width)] } },
+      { type: 'line', attrs: { coordinates: [b, c] }, styles: { style: 'dashed', dashedValue: [4, 4] } }
+    ]
+  }
+})
+
+// ---------------------------------------------------------------- measures --
+
+registerOverlay({
+  name: 'ciPriceRange',
+  totalStep: 3,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, overlay, chart }) => {
+    if (coordinates.length < 2) return []
+    const [a, b] = coordinates
+    const v0 = overlay.points[0]?.value ?? 0
+    const v1 = overlay.points[1]?.value ?? v0
+    const diff = v1 - v0
+    const pct = v0 !== 0 ? (diff / v0) * 100 : 0
+    const precision = chart.getSymbol()?.pricePrecision ?? 2
+    const color = diff >= 0 ? COLORS.up : COLORS.down
+    const sign = diff >= 0 ? '+' : ''
+    const x0 = Math.min(a.x, b.x)
+    const x1 = Math.max(a.x, b.x, x0 + 40)
+    const midX = (x0 + x1) / 2
+    return [
+      { type: 'polygon', attrs: { coordinates: [{ x: x0, y: a.y }, { x: x1, y: a.y }, { x: x1, y: b.y }, { x: x0, y: b.y }] }, styles: { style: 'fill', color: alpha(color, 0.1) } },
+      { type: 'line', attrs: { coordinates: [{ x: x0, y: a.y }, { x: x1, y: a.y }] }, styles: { color, size: 1 } },
+      { type: 'line', attrs: { coordinates: [{ x: x0, y: b.y }, { x: x1, y: b.y }] }, styles: { color, size: 1 } },
+      { type: 'line', attrs: { coordinates: [{ x: midX, y: a.y }, { x: midX, y: b.y }] }, styles: { color, size: 1 } },
+      label(midX, diff >= 0 ? Math.min(a.y, b.y) : Math.max(a.y, b.y), `${sign}${diff.toFixed(precision)}  (${sign}${pct.toFixed(2)}%)`, color, diff < 0)
+    ]
+  }
+})
+
+registerOverlay({
+  name: 'ciDateRange',
+  totalStep: 3,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ coordinates, chart }) => {
+    if (coordinates.length < 2) return []
+    const [a, b] = coordinates
+    const bars = Math.round((b.x - a.x) / chart.getBarSpace().bar)
+    const period = chart.getPeriod()
+    const ms = period ? Math.abs(bars) * period.span * (PERIOD_MS[period.type] ?? 0) : 0
+    const y0 = Math.min(a.y, b.y)
+    const y1 = Math.max(a.y, b.y, y0 + 30)
+    const midY = (y0 + y1) / 2
+    const color = COLORS.accent
+    return [
+      { type: 'polygon', attrs: { coordinates: [{ x: a.x, y: y0 }, { x: b.x, y: y0 }, { x: b.x, y: y1 }, { x: a.x, y: y1 }] }, styles: { style: 'fill', color: alpha(color, 0.12) } },
+      { type: 'line', attrs: { coordinates: [{ x: a.x, y: y0 }, { x: a.x, y: y1 }] }, styles: { color, size: 1 } },
+      { type: 'line', attrs: { coordinates: [{ x: b.x, y: y0 }, { x: b.x, y: y1 }] }, styles: { color, size: 1 } },
+      { type: 'line', attrs: { coordinates: [{ x: a.x, y: midY }, { x: b.x, y: midY }] }, styles: { color, size: 1 } },
+      label((a.x + b.x) / 2, y1, `${Math.abs(bars)} velas${ms ? ` · ${duration(ms)}` : ''}`, color, true)
+    ]
+  }
+})
+
+// ------------------------------------------------------------------ catalog --
+
+export interface ToolGroup {
+  id: string
+  label: string
+}
+
+export const TOOL_GROUPS: ToolGroup[] = [
+  { id: 'lines', label: 'Líneas' },
+  { id: 'hv', label: 'Horizontales y verticales' },
+  { id: 'channels', label: 'Canales y tridente' },
+  { id: 'fib', label: 'Fibonacci' },
+  { id: 'shapes', label: 'Formas' },
+  { id: 'free', label: 'Mano alzada' },
+  { id: 'text', label: 'Texto y notas' },
+  { id: 'marks', label: 'Señales' },
+  { id: 'measure', label: 'Medición' }
+]
+
 export interface ToolDef {
   name: string
   label: string
+  /** Group in the drawing palette; the cursor has none */
+  group?: string
   key?: string
 }
 
-/** Tools shown in the dock, in order. `cursor` is not an overlay. */
+/** Every tool, in palette order. `cursor` is not an overlay. */
 export const TOOLS: ToolDef[] = [
   { name: 'cursor', label: 'Cursor', key: 'v' },
-  { name: 'brush', label: 'Lápiz libre', key: 'b' },
-  { name: 'segment', label: 'Línea', key: 't' },
-  { name: 'rayLine', label: 'Rayo', key: 'r' },
-  { name: 'straightLine', label: 'Línea extendida', key: 'e' },
-  { name: 'horizontalStraightLine', label: 'Línea horizontal', key: 'h' },
-  { name: 'horizontalRayLine', label: 'Rayo horizontal', key: 'j' },
-  { name: 'verticalStraightLine', label: 'Línea vertical', key: 'l' },
-  { name: 'parallelStraightLine', label: 'Canal paralelo', key: 'c' },
-  { name: 'fibonacciLine', label: 'Fibonacci', key: 'f' },
-  { name: 'ciRect', label: 'Rectángulo', key: 'g' },
-  { name: 'ciArrow', label: 'Flecha', key: 'a' },
-  { name: 'ciText', label: 'Texto', key: 'x' },
-  { name: 'priceLine', label: 'Marca de precio', key: 'p' },
-  { name: 'ciMeasure', label: 'Medir', key: 'm' }
+  { name: 'segment', label: 'Línea', group: 'lines', key: 't' },
+  { name: 'rayLine', label: 'Rayo', group: 'lines', key: 'r' },
+  { name: 'straightLine', label: 'Línea extendida', group: 'lines', key: 'e' },
+  { name: 'ciArrow', label: 'Flecha', group: 'lines', key: 'a' },
+  { name: 'ciCrossLine', label: 'Cruz', group: 'lines' },
+  { name: 'horizontalStraightLine', label: 'Línea horizontal', group: 'hv', key: 'h' },
+  { name: 'horizontalRayLine', label: 'Rayo horizontal', group: 'hv', key: 'j' },
+  { name: 'horizontalSegment', label: 'Segmento horizontal', group: 'hv' },
+  { name: 'verticalStraightLine', label: 'Línea vertical', group: 'hv', key: 'l' },
+  { name: 'verticalRayLine', label: 'Rayo vertical', group: 'hv' },
+  { name: 'verticalSegment', label: 'Segmento vertical', group: 'hv' },
+  { name: 'priceLine', label: 'Marca de precio', group: 'hv', key: 'p' },
+  { name: 'parallelStraightLine', label: 'Canal paralelo', group: 'channels', key: 'c' },
+  { name: 'priceChannelLine', label: 'Canal de precio', group: 'channels' },
+  { name: 'ciPitchfork', label: 'Tridente (Andrews)', group: 'channels' },
+  { name: 'fibonacciLine', label: 'Retroceso de Fibonacci', group: 'fib', key: 'f' },
+  { name: 'ciFibExtension', label: 'Extensión de Fibonacci', group: 'fib' },
+  { name: 'ciRect', label: 'Rectángulo', group: 'shapes', key: 'g' },
+  { name: 'ciCircle', label: 'Círculo', group: 'shapes', key: 'o' },
+  { name: 'ciTriangle', label: 'Triángulo', group: 'shapes' },
+  { name: 'brush', label: 'Lápiz libre', group: 'free', key: 'b' },
+  { name: 'ciMarker', label: 'Rotulador', group: 'free', key: 'k' },
+  { name: 'ciText', label: 'Texto', group: 'text', key: 'x' },
+  { name: 'simpleAnnotation', label: 'Nota con flecha', group: 'text' },
+  { name: 'ciSignalUp', label: 'Señal arriba', group: 'marks' },
+  { name: 'ciSignalDown', label: 'Señal abajo', group: 'marks' },
+  { name: 'ciMeasure', label: 'Medir', group: 'measure', key: 'm' },
+  { name: 'ciPriceRange', label: 'Rango de precio', group: 'measure' },
+  { name: 'ciDateRange', label: 'Rango de fechas', group: 'measure' }
 ]
+
+/** Tools whose drawing asks for a text. */
+export const TEXT_TOOLS = new Set(['ciText', 'simpleAnnotation'])
+
+/** Tools that keep drawing until another tool is picked. */
+export const FREEHAND_TOOLS = new Set(['brush', 'ciMarker'])
+
+export const DEFAULT_TOOL_FAVORITES = [
+  'brush', 'segment', 'rayLine', 'horizontalStraightLine', 'parallelStraightLine', 'fibonacciLine', 'ciRect', 'ciText', 'ciMeasure'
+]
+
+export function toolByName(name: string): ToolDef | undefined {
+  return TOOLS.find(t => t.name === name)
+}

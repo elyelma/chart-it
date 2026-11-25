@@ -15,7 +15,27 @@ const P: Record<string, string> = {
   ciText: '<path d="M4 5V3.5h12V5M10 3.5v13M7.5 16.5h5"/>',
   priceLine: '<path d="M3 10h9"/><path d="M12 6.5h5.5v7H12l-2.5-3.5z"/>',
   ciMeasure: '<path d="M3 17V3M3 17h14"/><path d="M7 13l3-4 3 2 3-5" /><path d="M14 6h2v2"/>',
-  magnet: '<path d="M5 3v7a5 5 0 0010 0V3h-3v7a2 2 0 01-4 0V3z"/><path d="M5 6h3M12 6h3"/>',
+  horizontalSegment: '<path d="M4 10h12"/><circle cx="4" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/>',
+  verticalRayLine: '<path d="M10 15V1"/><circle cx="10" cy="15" r="1.6"/>',
+  verticalSegment: '<path d="M10 4v12"/><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="16" r="1.6"/>',
+  ciCrossLine: '<path d="M1 10h18M10 1v18"/><circle cx="10" cy="10" r="1.6"/>',
+  priceChannelLine: '<path d="M2 14L14 4M6 18L18 8"/><path d="M4 16L16 6" stroke-dasharray="2 2.5"/>',
+  ciPitchfork: '<path d="M2 12l7-1M9 11l9-3M7 4l11 0M9 18l9 0" /><path d="M7 4l2 14" stroke-dasharray="2 2"/><circle cx="2" cy="12" r="1.5"/>',
+  ciFibExtension: '<path d="M2 17l4-9 4 5" stroke-dasharray="2 2"/><path d="M10 3h8M10 7h8M10 11h8"/><circle cx="10" cy="13" r="1.4"/>',
+  ciCircle: '<circle cx="10" cy="10" r="7"/>',
+  ciTriangle: '<path d="M10 3l7.5 13h-15z"/>',
+  ciMarker: '<path d="M3 15c3-1 4-5 7-6s4 2 7-1" stroke-width="4" opacity=".45"/><path d="M3 15c3-1 4-5 7-6s4 2 7-1"/>',
+  simpleAnnotation: '<rect x="3" y="2.5" width="14" height="7" rx="1.5"/><path d="M10 9.5v8M8 15.5l2 2 2-2"/>',
+  ciSignalUp: '<path d="M10 3l6 7h-3.5v7h-5v-7H4z"/>',
+  ciSignalDown: '<path d="M10 17l6-7h-3.5V3h-5v7H4z"/>',
+  ciPriceRange: '<path d="M3 4h14M3 16h14M10 5v10M7.5 7.5L10 5l2.5 2.5M7.5 12.5L10 15l2.5-2.5"/>',
+  ciDateRange: '<path d="M4 3v14M16 3v14M5 10h10M7.5 7.5L5 10l2.5 2.5M12.5 7.5L15 10l-2.5 2.5"/>',
+  draw: '<path d="M12.5 3.5l4 4L7 17H3v-4z"/><path d="M10.5 5.5l4 4"/>',
+  chevDown: '<path d="M5 8l5 5 5-5"/>',
+  chevUp: '<path d="M5 12l5-5 5 5"/>',
+  caret: '<path d="M8 5l5 5-5 5"/>',
+  plus: '<path d="M10 4v12M4 10h12"/>',
+  magnet:'<path d="M5 3v7a5 5 0 0010 0V3h-3v7a2 2 0 01-4 0V3z"/><path d="M5 6h3M12 6h3"/>',
   stay: '<path d="M10 3a7 7 0 106.3 4"/><path d="M17 2v5h-5"/>',
   eye: '<path d="M1.5 10S5 4 10 4s8.5 6 8.5 6-3.5 6-8.5 6-8.5-6-8.5-6z"/><circle cx="10" cy="10" r="2.5"/>',
   eyeOff: '<path d="M3 3l14 14M8 4.3A8 8 0 0110 4c5 0 8.5 6 8.5 6a14 14 0 01-2.6 3.2M5.2 5.9A14 14 0 001.5 10S5 16 10 16a8 8 0 003.6-.9"/>',
@@ -35,7 +55,7 @@ const P: Record<string, string> = {
 }
 
 export function icon(name: string, size = 18): string {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] ?? ''}</svg>`
+  return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] ?? ''}</svg>`
 }
 
 export const LOGO = `<svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#7C6CFF"/><path d="M6 21l6-6 4 4 9-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="9" r="2.5" fill="#36E2B4"/></svg>`

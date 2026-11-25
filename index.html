@@ -10,41 +10,57 @@
   <body>
     <header class="topbar">
       <div class="brand" id="brand"></div>
+      <div class="vsep"></div>
       <button class="symbol-btn" id="symbolBtn" title="Buscar símbolo (Ctrl+K)">
-        <span class="sym-ticker" id="symTicker">—</span>
-        <span class="sym-src" id="symSrc"></span>
+        <span class="sym-text">
+          <span class="sym-ticker" id="symTicker">—</span>
+          <span class="sym-src" id="symSrc"></span>
+        </span>
+        <span class="sym-caret" id="symCaret"></span>
       </button>
       <button class="icon-btn star" id="starBtn" title="Añadir a la lista"></button>
-      <div class="tf-group" id="tfGroup" role="group" aria-label="Temporalidad"></div>
+      <div class="vsep"></div>
+      <div class="tf-wrap">
+        <button class="tf-more" id="tfMore" data-tip="Más temporalidades y las tuyas"></button>
+        <div class="tf-group" id="tfGroup" role="group" aria-label="Temporalidad"></div>
+      </div>
+      <div class="vsep"></div>
       <button class="tb-btn" id="indBtn"></button>
+      <button class="tb-btn" id="drawBtn"></button>
       <div class="spacer"></div>
       <div class="quote" id="quote">
         <span class="quote-price" id="quotePrice">—</span>
         <span class="quote-change" id="quoteChange"></span>
       </div>
-      <button class="icon-btn" id="shotBtn" title="Guardar imagen"></button>
-      <button class="icon-btn" id="listBtn" title="Lista de seguimiento"></button>
+      <div class="vsep"></div>
+      <button class="icon-btn" id="shotBtn" data-tip="Guardar imagen"></button>
+      <button class="icon-btn" id="listBtn" data-tip="Mi lista"></button>
     </header>
 
     <main class="workspace">
       <section class="chart-wrap">
         <div id="chart" class="chart"></div>
-        <div class="chart-note" id="chartNote"></div>
         <div class="chart-status" id="chartStatus" hidden></div>
+        <footer class="toolbar" aria-label="Herramientas de dibujo">
+          <div class="tb-tools" id="tbTools"></div>
+          <div class="tb-spacer"></div>
+          <div class="tb-actions" id="tbActions"></div>
+        </footer>
       </section>
       <aside class="watchlist" id="watchlist">
         <div class="wl-head">
-          <span>Mi lista</span>
-          <span class="wl-hint">clic para abrir</span>
+          <span class="wl-title">Mi lista</span>
+          <span class="wl-count" id="wlCount"></span>
+          <button class="x-btn" id="wlClose" data-tip="Cerrar lista"></button>
         </div>
         <div class="wl-body" id="wlBody"></div>
       </aside>
     </main>
 
     <div class="props" id="props" hidden></div>
-    <nav class="dock" id="dock" aria-label="Herramientas de dibujo"></nav>
-
-    <div class="popover" id="indPopover" hidden></div>
+    <div class="panel draw-palette" id="drawPalette" hidden></div>
+    <div class="panel tf-picker" id="tfPicker" hidden></div>
+    <div class="panel ind-panel" id="indPopover" hidden></div>
 
     <div class="modal-backdrop" id="searchModal" hidden>
       <div class="modal search-modal" role="dialog" aria-label="Buscar símbolo">
@@ -52,6 +68,7 @@
           <span class="search-icon" id="searchIcon"></span>
           <input id="searchInput" type="text" placeholder="BTC, oro, nasdaq, EURUSD, NVDA…" autocomplete="off" spellcheck="false" />
           <kbd>Esc</kbd>
+          <button class="x-btn" id="searchClose" data-tip="Cerrar (Esc)"></button>
         </div>
         <div class="chips" id="searchChips"></div>
         <div class="results" id="searchResults"></div>
