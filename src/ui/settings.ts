@@ -1,5 +1,6 @@
 import type { CandleType, Chart } from 'klinecharts'
 import { setPriceScale, type PriceScale } from '../chart/volume'
+import { FEEDBACK_URL } from '../config'
 import { drawingsDb } from '../store/db'
 import { dialog, toast } from './feedback'
 import { icon } from './icons'
@@ -122,12 +123,23 @@ export class SettingsMenu {
     body.appendChild(note)
     body.appendChild(this.item('download', 'Descargar respaldo', 'Dibujos, listas y favoritos en un archivo', () => void this.exportBackup()))
     body.appendChild(this.item('upload', 'Restaurar respaldo', 'Desde un archivo .json de Chart-It', () => this.pickBackup()))
+    const protectedNote = document.createElement('p')
+    protectedNote.className = 'settings-note'
+    body.appendChild(protectedNote)
+    void navigator.storage?.persisted?.().then(ok => {
+      protectedNote.textContent = ok
+        ? 'Almacenamiento protegido: el navegador no borrará tus dibujos para liberar espacio.'
+        : 'Almacenamiento no protegido: el navegador podría borrar tus dibujos si se queda sin espacio o si pasas días sin entrar. Haz respaldos.'
+    })
 
     h('Ayuda')
     body.appendChild(this.item('keyboard', 'Atajos de teclado', '', () => {
       this.popup.close()
       this.hooks.onShortcuts()
     }, '?'))
+    if (FEEDBACK_URL) {
+      body.appendChild(this.item('edit', 'Enviar comentarios', 'Ideas, errores, lo que quieras', () => window.open(FEEDBACK_URL, '_blank', 'noopener')))
+    }
     const legal = document.createElement('div')
     legal.className = 'settings-links'
     legal.innerHTML =
