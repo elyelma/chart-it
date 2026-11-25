@@ -12,6 +12,7 @@ import type { Market, Timeframe } from './data/types'
 import { liveEvents } from './data/util'
 import { requestPersistentStorage } from './store/db'
 import { DrawingMenu } from './ui/contextMenu'
+import { DrawingList } from './ui/drawingList'
 import { Dock } from './ui/dock'
 import { dialog, installTooltips, toast } from './ui/feedback'
 import { icon, LOGO } from './ui/icons'
@@ -177,6 +178,7 @@ if (import.meta.env.DEV) Object.assign(window, { __chart: chart })
 const drawings = new DrawingManager(chart, {
   onCountChange: n => {
     dock.setCount(n)
+    drawingList.refresh()
     maybeRemindBackup(n)
   },
   onSelect: (o, look) => dock.showProps(o, look),
@@ -197,6 +199,7 @@ document.addEventListener('visibilitychange', () => {
 })
 const dock = new Dock(drawings)
 const drawingMenu = new DrawingMenu(drawings)
+const drawingList = new DrawingList(drawings, dock.listButton, () => market.pricePrecision)
 
 // ----------------------------------------------------------------- header --
 

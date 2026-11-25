@@ -46,6 +46,8 @@ const P: Record<string, string> = {
   info: '<circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.5v.01"/>',
   copy: '<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2"/>',
   front: '<rect x="3" y="3" width="9" height="9" rx="1.5"/><rect x="8" y="8" width="9" height="9" rx="1.5" fill="currentColor" opacity=".25"/>',
+  ciPosition: '<rect x="3" y="3" width="14" height="7" rx="1" fill="currentColor" opacity=".18"/><rect x="3" y="10" width="14" height="5" rx="1"/><path d="M3 10h14"/>',
+  layers: '<path d="M10 3l7.5 4L10 11 2.5 7z"/><path d="M2.5 10.5L10 14.5l7.5-4M2.5 14L10 18l7.5-4"/>',
   check: '<path d="M4.5 10.5l3.5 3.5 7.5-8"/>',
   dot: '<circle cx="10" cy="10" r="4" fill="currentColor" stroke="none"/>',
   magnet: '<path d="M5 3v7a5 5 0 0010 0V3h-3v7a2 2 0 01-4 0V3z"/><path d="M5 6h3M12 6h3"/>',

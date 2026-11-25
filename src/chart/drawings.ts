@@ -4,6 +4,20 @@ import { FREEHAND_TOOLS, TEXT_TOOLS } from './overlays'
 import { DRAW_COLORS, drawingStyles } from './theme'
 
 const GROUP = 'drawings'
+const TOOL_LOOKS_KEY = 'chartit:tool-looks'
+
+function readToolLooks(): Record<string, Look> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(TOOL_LOOKS_KEY) ?? '{}') as Record<string, Look>
+    const out: Record<string, Look> = {}
+    for (const [k, v] of Object.entries(raw ?? {})) {
+      if (v && typeof v.color === 'string' && typeof v.size === 'number') out[k] = { color: v.color, size: v.size, dashed: !!v.dashed, textSize: v.textSize }
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
 const FINISHED = -1
 const HISTORY_MAX = 200
 
@@ -58,6 +72,9 @@ export class DrawingManager {
   /** While true, removals/creations we trigger ourselves are not recorded. */
   private muted = false
 
+  private activeTool: string | null = null
+  private toolLooks: Record<string, Look> = readToolLooks()
+
   magnet = false
   stayInTool = false
   look: Look = { color: DRAW_COLORS[0], size: 2, dashed: false }
@@ -93,7 +110,10 @@ export class DrawingManager {
 
   startTool(name: string): void {
     this.cancelDrawing()
-    const look = { ...this.look }
+    this.activeTool = name
+    // Each tool remembers the style it was last given.
+    const look = { ...(this.toolLooks[name] ?? this.look) }
+    this.look = { ...look }
     const create: OverlayCreate = {
       name,
       groupId: GROUP,
@@ -134,6 +154,7 @@ export class DrawingManager {
     if (!id) {
       // No selection: this becomes the style of the drawing in progress / the next one.
       this.look = { ...this.look, ...patch }
+      if (this.activeTool) this.rememberToolLook(this.activeTool, this.look)
       for (const o of this.chart.getOverlays({ groupId: GROUP })) {
         if (o.currentStep === FINISHED) continue
         this.looks.set(o.id, { ...this.look })
@@ -145,9 +166,52 @@ export class DrawingManager {
     const look = { ...(this.looks.get(id) ?? this.look), ...patch }
     this.looks.set(id, look)
     this.look = { ...look }
+    const name = this.chart.getOverlays({ id })[0]?.name
+    if (name) this.rememberToolLook(name, look)
     this.chart.overrideOverlay({ id, styles: styleOf(look) })
     this.commit()
     this.select(id)
+  }
+
+  private rememberToolLook(name: string, look: Look): void {
+    this.toolLooks[name] = { ...look }
+    try {
+      localStorage.setItem(TOOL_LOOKS_KEY, JSON.stringify(this.toolLooks))
+    } catch {
+      /* storage full: keep it for this session */
+    }
+  }
+
+  // ----------------------------------------------------------- list panel --
+
+  /** Finished drawings of this market, newest first. */
+  list(): Overlay[] {
+    return this.finished().reverse()
+  }
+
+  lookOf(id: string): Look {
+    return this.looks.get(id) ?? this.look
+  }
+
+  setVisible(id: string, visible: boolean): void {
+    this.chart.overrideOverlay({ id, visible })
+    this.commit()
+  }
+
+  setLocked(id: string, lock: boolean): void {
+    this.chart.overrideOverlay({ id, lock })
+    this.commit()
+  }
+
+  removeById(id: string): void {
+    this.chart.removeOverlay({ id })
+    if (this.selectedId === id) this.select(null)
+  }
+
+  /** Scrolls the chart so the drawing's first point is in view. */
+  focus(id: string): void {
+    const ts = this.chart.getOverlays({ id })[0]?.points[0]?.timestamp
+    if (ts) this.chart.scrollToTimestamp(ts, 300)
   }
 
   toggleLockSelected(): void {

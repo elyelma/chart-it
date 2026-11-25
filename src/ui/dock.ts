@@ -36,6 +36,8 @@ export class Dock {
   private popup!: Popup
   private countEl!: HTMLElement
   private hideBtn!: HTMLButtonElement
+  /** Opens the list of drawings (wired in main). */
+  listButton!: HTMLButtonElement
   private openGroups: Set<string>
   private propsDismissed = false
 
@@ -242,6 +244,8 @@ export class Dock {
     this.hideBtn = this.actionBtn('eye', 'Ocultar / mostrar todos los dibujos')
     this.hideBtn.classList.add('toggle')
     this.hideBtn.onclick = () => this.dm.setAllVisible(this.dm.allHidden())
+    this.listButton = this.actionBtn('layers', 'Lista de dibujos')
+    this.listButton.classList.add('toggle')
     this.actions.appendChild(vsep())
     this.actionBtn('undo', 'Deshacer', 'Ctrl+Z').onclick = () => this.dm.undo()
     this.actionBtn('redo', 'Rehacer', 'Ctrl+Y').onclick = () => this.dm.redo()

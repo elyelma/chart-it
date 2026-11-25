@@ -359,6 +359,69 @@ registerOverlay({
   }
 })
 
+// ---------------------------------------------------------------- position --
+
+/**
+ * Risk / reward planner: click the entry, then the target, then the stop.
+ * Long or short is read from where the target is. It is a drawing, not an order.
+ */
+registerOverlay({
+  name: 'ciPosition',
+  totalStep: 4,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, overlay, chart }) => {
+    if (coordinates.length < 2) return []
+    const [e, t] = coordinates
+    const entry = overlay.points[0]?.value ?? 0
+    const target = overlay.points[1]?.value ?? entry
+    const long = target >= entry
+    // Until the stop is placed, mirror the target at half the distance.
+    const stop = overlay.points[2]?.value ?? entry - (target - entry) / 2
+    const sY = coordinates[2]?.y ?? e.y + (e.y - t.y) / 2
+    const x0 = Math.min(e.x, t.x)
+    const x1 = Math.max(e.x, t.x, x0 + 60)
+    const precision = chart.getSymbol()?.pricePrecision ?? 2
+    const pct = (v: number) => (entry ? ((v - entry) / entry) * 100 : 0)
+    const reward = Math.abs(target - entry)
+    const risk = Math.abs(entry - stop)
+    const rr = risk > 0 ? reward / risk : 0
+    const zone = (y: number, color: string): OverlayFigure => ({
+      type: 'polygon',
+      attrs: { coordinates: [{ x: x0, y: e.y }, { x: x1, y: e.y }, { x: x1, y }, { x: x0, y }] },
+      styles: { style: 'stroke_fill', color: alpha(color, 0.13), borderColor: alpha(color, 0.55), borderSize: 1 }
+    })
+    const tag = (y: number, above: boolean, text: string, color: string): OverlayFigure => ({
+      type: 'text',
+      ignoreEvent: true,
+      attrs: { x: (x0 + x1) / 2, y: above ? y - 6 : y + 6, text, align: 'center', baseline: above ? 'bottom' : 'top' },
+      styles: {
+        style: 'fill', color: '#0A0D13', backgroundColor: color, size: 11, weight: 600,
+        borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 3, paddingBottom: 3
+      }
+    })
+    const sign = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+    const tUp = t.y < e.y
+    return [
+      zone(t.y, COLORS.up),
+      zone(sY, COLORS.down),
+      { type: 'line', attrs: { coordinates: [{ x: x0, y: e.y }, { x: x1, y: e.y }] }, styles: { color: COLORS.textStrong, size: 1 } },
+      tag(t.y, tUp, `${long ? 'Largo' : 'Corto'} · Objetivo ${target.toFixed(precision)} (${sign(pct(target))})`, COLORS.up),
+      tag(sY, !tUp, `Stop ${stop.toFixed(precision)} (${sign(pct(stop))})`, COLORS.down),
+      {
+        type: 'text',
+        ignoreEvent: true,
+        attrs: { x: x1 + 6, y: e.y, text: `R:R ${rr.toFixed(2)}`, align: 'left', baseline: 'middle' },
+        styles: {
+          style: 'fill', color: COLORS.textStrong, backgroundColor: '#232833', size: 11, weight: 600,
+          borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 3, paddingBottom: 3
+        }
+      }
+    ]
+  }
+})
+
 // ------------------------------------------------------------------ catalog --
 
 export interface ToolGroup {
@@ -417,7 +480,8 @@ export const TOOLS: ToolDef[] = [
   { name: 'ciSignalDown', label: 'Señal abajo', group: 'marks' },
   { name: 'ciMeasure', label: 'Medir', group: 'measure', key: 'm' },
   { name: 'ciPriceRange', label: 'Rango de precio', group: 'measure' },
-  { name: 'ciDateRange', label: 'Rango de fechas', group: 'measure' }
+  { name: 'ciDateRange', label: 'Rango de fechas', group: 'measure' },
+  { name: 'ciPosition', label: 'Posición (riesgo / beneficio)', group: 'measure', key: 'q' }
 ]
 
 /** Tools whose drawing asks for a text. */
