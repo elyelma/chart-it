@@ -18,8 +18,12 @@ interface DialogOpts {
   danger?: boolean
 }
 
+let closeCurrent: ((v: string | null) => void) | null = null
+
 /** Resolves with the text (or "" for confirm dialogs) or null when cancelled. */
 export function dialog(opts: DialogOpts): Promise<string | null> {
+  // A new dialog replaces one that is still open: the old one counts as cancelled.
+  closeCurrent?.(null)
   const root = $('dialog')
   const text = $<HTMLTextAreaElement>('dialogText')
   const okBtn = $<HTMLButtonElement>('dialogOk')
@@ -39,6 +43,7 @@ export function dialog(opts: DialogOpts): Promise<string | null> {
 
   return new Promise(resolve => {
     const done = (v: string | null) => {
+      closeCurrent = null
       root.hidden = true
       okBtn.onclick = cancelBtn.onclick = root.onmousedown = null
       text.onkeydown = null
@@ -63,6 +68,7 @@ export function dialog(opts: DialogOpts): Promise<string | null> {
       }
     }
     document.addEventListener('keydown', onKey, true)
+    closeCurrent = done
   })
 }
 

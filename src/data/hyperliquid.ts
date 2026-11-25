@@ -7,7 +7,7 @@ const WS = 'wss://api.hyperliquid.xyz/ws'
 /** "" = main perp dex (crypto), "xyz" = traditional markets dex */
 const DEXES = ['', 'xyz']
 const INTERVAL: Record<string, string> = Object.fromEntries(
-  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d', '3d', '1w', '1M'].map(i => [i, i])
+  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d'].map(i => [i, i])
 )
 
 interface HlAsset { name: string; szDecimals: number; isDelisted?: boolean }
@@ -65,11 +65,15 @@ export const hyperliquid: Adapter = {
 
   async getBars(m: Market, tf: Timeframe, before: number | null, limit: number) {
     const endTime = before !== null ? before - 1 : Date.now()
-    const startTime = endTime - tf.ms * Math.min(limit, 5000)
-    const rows = await info<HlCandle[]>({
-      type: 'candleSnapshot',
-      req: { coin: m.symbol, interval: INTERVAL[tf.id], startTime, endTime }
-    })
+    const ask = (span: number) =>
+      info<HlCandle[]>({
+        type: 'candleSnapshot',
+        req: { coin: m.symbol, interval: INTERVAL[tf.id], startTime: endTime - tf.ms * span, endTime }
+      })
+    let rows = await ask(Math.min(limit, 5000))
+    // A quiet market can have a stretch with no candles: look further back once
+    // before deciding the history is over.
+    if (rows.length === 0 && before !== null) rows = await ask(5000)
     return rows
       .filter(c => before === null || c.t < before)
       .map(c => ({ timestamp: c.t, open: +c.o, high: +c.h, low: +c.l, close: +c.c, volume: +c.v }))

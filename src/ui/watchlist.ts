@@ -3,9 +3,10 @@ import type { Market, Ticker } from '../data/types'
 import { icon } from './icons'
 
 const KEY = 'chartit:watchlist'
+// Hyperliquid first: it answers from every region (Binance and Bybit block some).
 const DEFAULT = [
-  'bn:BTCUSDT', 'bn:ETHUSDT', 'bn:SOLUSDT', 'bn:XRPUSDT', 'hl:HYPE',
-  'hl:xyz:XYZ100', 'hl:xyz:SP500', 'hl:xyz:GOLD', 'hl:xyz:SILVER', 'hl:xyz:CL', 'hl:xyz:EUR', 'bnf:XAUUSDT'
+  'hl:BTC', 'hl:ETH', 'hl:SOL', 'hl:XRP', 'hl:HYPE',
+  'hl:xyz:XYZ100', 'hl:xyz:SP500', 'hl:xyz:GOLD', 'hl:xyz:SILVER', 'hl:xyz:CL', 'hl:xyz:EUR', 'bn:BTCUSDT'
 ]
 
 export function formatPrice(v: number, precision: number): string {
@@ -20,11 +21,13 @@ export class Watchlist {
   private body = document.getElementById('wlBody') as HTMLElement
 
   constructor(private onPick: (m: Market) => void, private onChange: () => void) {
+    let saved: unknown = null
     try {
-      this.ids = JSON.parse(localStorage.getItem(KEY) ?? 'null') ?? DEFAULT
+      saved = JSON.parse(localStorage.getItem(KEY) ?? 'null')
     } catch {
-      this.ids = DEFAULT
+      /* corrupted: defaults */
     }
+    this.ids = Array.isArray(saved) ? saved.filter((x): x is string => typeof x === 'string') : [...DEFAULT]
   }
 
   setMarkets(ms: Market[]): void {

@@ -3,7 +3,8 @@ import type { Category } from './types'
 /** "0.01000000" -> 2, "1" -> 0, "0.5" -> 1 */
 export function decimalsFromStep(step: string | number): number {
   const s = typeof step === 'number' ? step.toString() : step
-  if (/e-/i.test(s)) return Number(s.split(/e-/i)[1]) || 0
+  const exp = /^(\d+)(?:\.(\d*?))?0*e-(\d+)$/i.exec(s)
+  if (exp) return (exp[2]?.length ?? 0) + Number(exp[3])
   const dot = s.indexOf('.')
   if (dot < 0) return 0
   return s.slice(dot + 1).replace(/0+$/, '').length

@@ -16,7 +16,7 @@ type BnKline = [number, string, string, string, string, string, number, string]
 interface BnTicker { symbol: string; lastPrice: string; priceChangePercent: string }
 
 const INTERVAL: Record<string, string> = Object.fromEntries(
-  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'].map(i => [i, i])
+  ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '1w', '1M'].map(i => [i, i])
 )
 
 function toBar(k: BnKline): KLineData {
@@ -103,7 +103,13 @@ function makeBinance(futures: boolean): Adapter {
         rows = await fetchJson<BnTicker[]>(`${rest}/ticker/24hr`)
       } else {
         const symbols = encodeURIComponent(JSON.stringify(ms.map(m => m.symbol)))
-        rows = await fetchJson<BnTicker[]>(`${rest}/ticker/24hr?symbols=${symbols}`)
+        try {
+          rows = await fetchJson<BnTicker[]>(`${rest}/ticker/24hr?symbols=${symbols}`)
+        } catch {
+          // One unknown or delisted symbol fails the whole request: ask one by one.
+          const each = await Promise.allSettled(ms.map(m => fetchJson<BnTicker>(`${rest}/ticker/24hr?symbol=${m.symbol}`)))
+          rows = each.flatMap(r => (r.status === 'fulfilled' ? [r.value] : []))
+        }
       }
       const wanted = new Set(ms.map(m => m.symbol))
       for (const r of rows) {

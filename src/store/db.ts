@@ -25,8 +25,10 @@ function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T
       new Promise<T>((resolve, reject) => {
         const t = db.transaction(STORE, mode)
         const req = fn(t.objectStore(STORE))
-        req.onsuccess = () => resolve(req.result)
-        req.onerror = () => reject(req.error)
+        // Resolve only once the data is really on disk (a quota error aborts the transaction).
+        t.oncomplete = () => resolve(req.result)
+        t.onabort = () => reject(t.error ?? req.error ?? new Error('IndexedDB abort'))
+        t.onerror = () => reject(t.error ?? req.error)
       })
   )
 }

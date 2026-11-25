@@ -30,9 +30,10 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const LAST_KEY = 'chartit:last'
 const UI_KEY = 'chartit:ui'
 
+/** First market for a new visitor: Hyperliquid answers from every region. */
 const FALLBACK: Market = {
-  id: 'bn:BTCUSDT', source: 'binance', symbol: 'BTCUSDT', ticker: 'BTCUSDT', name: 'BTC / USDT',
-  category: 'crypto', kind: 'spot', pricePrecision: 2, volumePrecision: 5, aliases: ['BTC']
+  id: 'hl:BTC', source: 'hyperliquid', symbol: 'BTC', ticker: 'BTC', name: 'BTC (perpetuo)',
+  category: 'crypto', kind: 'perp', pricePrecision: 0, volumePrecision: 5, aliases: ['BTC', 'BTCUSD']
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -43,9 +44,15 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-const last = readJson<{ market: Market; tf: string }>(LAST_KEY, { market: FALLBACK, tf: '1h' })
-let market: Market = last.market
-let tf: Timeframe = timeframeById(last.tf)
+/** A stored market is used only if it still has the shape we need. */
+function isMarket(x: unknown): x is Market {
+  const m = x as Market | null
+  return !!m && typeof m.id === 'string' && typeof m.source === 'string' && typeof m.symbol === 'string' &&
+    typeof m.ticker === 'string' && Array.isArray(m.aliases) && Number.isFinite(m.pricePrecision)
+}
+const last = readJson<{ market?: unknown; tf?: unknown }>(LAST_KEY, {})
+let market: Market = isMarket(last.market) ? last.market : FALLBACK
+let tf: Timeframe = timeframeById(typeof last.tf === 'string' ? last.tf : '1h')
 let catalog: Market[] = cachedMarkets() ?? []
 let loadToken = 0
 /** Market asked for in the link but not in the cached catalog yet. */
@@ -168,11 +175,25 @@ if (import.meta.env.DEV) Object.assign(window, { __chart: chart })
 // ---------------------------------------------------------------- drawings --
 
 const drawings = new DrawingManager(chart, {
-  onCountChange: n => dock.setCount(n),
+  onCountChange: n => {
+    dock.setCount(n)
+    maybeRemindBackup(n)
+  },
   onSelect: (o, look) => dock.showProps(o, look),
   onToolDone: () => dock.select('cursor'),
   onTextRequest: current => dialog({ title: 'Texto', input: current, ok: 'Listo' }),
-  onContextMenu: o => drawingMenu.open(o)
+  onContextMenu: o => drawingMenu.open(o),
+  onSaveError: () => {
+    if (saveErrorShown) return
+    saveErrorShown = true
+    toast('No se pudieron guardar tus dibujos en este navegador (¿espacio lleno o modo privado?). Descarga un respaldo desde Ajustes.', 'error', 10000)
+  }
+})
+let saveErrorShown = false
+// Never lose the last stroke: write pending drawings when the page is hidden or closed.
+window.addEventListener('pagehide', () => drawings.flushSave())
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) drawings.flushSave()
 })
 const dock = new Dock(drawings)
 const drawingMenu = new DrawingMenu(drawings)
@@ -209,6 +230,15 @@ function renderHeader(): void {
     ? 'Contrato perpetuo: sigue al precio del subyacente y cotiza también cuando su mercado está cerrado. (Ctrl+K para buscar)'
     : 'Buscar símbolo (Ctrl+K)'
   tfPicker.setCurrent(tf)
+  // Source and a plain-words disclaimer, always on screen.
+  const note = $('tbNote')
+  note.textContent = `Datos de ${adapterOf(market.source).label}${perp247 ? ' (perpetuo)' : ''} · Solo información, no es asesoría financiera · `
+  const terms = document.createElement('a')
+  terms.href = '/legal/terminos.html'
+  terms.target = '_blank'
+  terms.rel = 'noopener'
+  terms.textContent = 'Términos'
+  note.appendChild(terms)
   const star = $('starBtn')
   star.innerHTML = icon('star')
   star.classList.toggle('on', watchlist.has(market.id))
@@ -224,7 +254,7 @@ function persist(): void {
 }
 
 async function setMarket(m: Market): Promise<void> {
-  loadToken++
+  const token = ++loadToken
   market = m
   lastBar = null
   quoteChange = null
@@ -234,6 +264,8 @@ async function setMarket(m: Market): Promise<void> {
   watchlist.setCurrent(m.id)
   persist()
   await drawings.setMarket(m.id)
+  // Another market was picked while the drawings loaded: that call takes over.
+  if (token !== loadToken) return
   chart.setSymbol({ ticker: `${m.ticker} · ${adapterOf(m.source).label}`, id: m.id, pricePrecision: m.pricePrecision, volumePrecision: m.volumePrecision })
   void refreshTickers()
 }
@@ -244,7 +276,18 @@ function setTimeframe(t: Timeframe): void {
   tf = t
   renderHeader()
   persist()
+  applyTimezone()
   chart.setPeriod(t.period)
+}
+
+/**
+ * Exchanges start daily, weekly and monthly candles at 00:00 UTC; shown in
+ * local time west of UTC they would carry the previous day's date.
+ */
+const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone
+function applyTimezone(): void {
+  const unit = tf.id.slice(-1)
+  chart.setTimezone(unit === 'd' || unit === 'w' || unit === 'M' ? 'UTC' : LOCAL_TZ)
 }
 
 // -------------------------------------------------------------- watchlist --
@@ -290,7 +333,14 @@ function applyCatalog(ms: Market[], loading: boolean): void {
   watchlist.setMarkets(ms)
   // Refresh precision etc. of the open market with fresh catalog data.
   const fresh = ms.find(m => m.id === market.id)
-  if (fresh) market = { ...fresh }
+  if (fresh) {
+    const precisionChanged = fresh.pricePrecision !== market.pricePrecision || fresh.volumePrecision !== market.volumePrecision
+    market = { ...fresh }
+    // Only once the chart is showing it: setSymbol reloads the candles.
+    if (precisionChanged && lastBar && !pendingHashId) {
+      chart.setSymbol({ ticker: `${fresh.ticker} · ${adapterOf(fresh.source).label}`, id: fresh.id, pricePrecision: fresh.pricePrecision, volumePrecision: fresh.volumePrecision })
+    }
+  }
 }
 
 applyCatalog(catalog, catalog.length === 0)
@@ -302,7 +352,8 @@ void loadAllMarkets().then(({ markets, failed }) => {
     if (!m) toast('No encontramos el mercado del enlace; te mostramos el último que abriste.', 'info', 6000)
     void setMarket(m ?? market)
   }
-  if (failed.length) toast(`No se pudo cargar el catálogo de: ${failed.join(', ')}`, 'error', 6000)
+  // A blocked or down source is simply left out; the search footer says so.
+  if (failed.length) search.setUnavailable(failed)
   void refreshTickers()
 })
 
@@ -379,7 +430,11 @@ const TOOL_KEYS = new Map(TOOLS.filter(t => t.key).map(t => [t.key as string, t.
 document.addEventListener('keydown', e => {
   const target = e.target as HTMLElement
   const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
-  if (!$('dialog').hidden) return
+  if (!$('dialog').hidden || search.isOpen) {
+    // Open modals handle their own keys (Esc closes only them).
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') e.preventDefault()
+    return
+  }
   if (e.key === 'Escape' && closeTopPopup()) {
     e.preventDefault()
     return
@@ -420,6 +475,26 @@ document.addEventListener('keydown', e => {
   }
 })
 
+// ------------------------------------------------------- backup reminder --
+
+const REMIND_KEY = 'chartit:backup-reminded'
+const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent)
+/** Drawings live only in this browser: nudge, at most once a week, to keep a backup. */
+function maybeRemindBackup(count: number): void {
+  if (count < 15) return
+  const now = Date.now()
+  const lastBackup = Number(localStorage.getItem('chartit:last-backup') ?? 0)
+  const lastRemind = Number(localStorage.getItem(REMIND_KEY) ?? 0)
+  if (now - lastBackup < 14 * 86_400_000 || now - lastRemind < 7 * 86_400_000) return
+  localStorage.setItem(REMIND_KEY, String(now))
+  toast(
+    `Ya tienes ${count} dibujos aquí. Tus dibujos viven solo en este navegador: descarga un respaldo de vez en cuando desde Ajustes.` +
+      (isSafari ? ' En Safari, instala Chart-It en tu inicio para que no se borren tras 7 días sin visitarlo.' : ''),
+    'info',
+    12000
+  )
+}
+
 // ---------------------------------------------------------- live status --
 
 const liveDot = $('liveDot')
@@ -434,7 +509,10 @@ liveEvents.addEventListener('open', e => {
   // After a cut, candles from the gap are missing: reload them once.
   if ((e as CustomEvent<{ reconnect: boolean }>).detail.reconnect) {
     if (resyncTimer) clearTimeout(resyncTimer)
-    resyncTimer = setTimeout(() => chart.resetData(), 600)
+    resyncTimer = setTimeout(() => {
+      loadToken++
+      chart.resetData()
+    }, 600)
   }
 })
 liveEvents.addEventListener('drop', () => setLive(navigator.onLine ? 'reconnecting' : 'offline'))
@@ -477,7 +555,14 @@ installTooltips()
 requestPersistentStorage()
 
 // Deep link: #<marketId>/<tf>
-const hash = decodeURIComponent(location.hash.slice(1))
+function readHash(): string {
+  try {
+    return decodeURIComponent(location.hash.slice(1))
+  } catch {
+    return '' // malformed link: ignore it
+  }
+}
+const hash = readHash()
 if (hash) {
   const [id, tfId] = hash.split('/')
   const fromHash = catalog.find(m => m.id === id)
@@ -486,13 +571,14 @@ if (hash) {
   if (tfId) tf = timeframeById(tfId)
 }
 
+applyTimezone()
 chart.setPeriod(tf.period)
 // A shared link to a market we do not know yet waits for the catalog (about a second).
 if (pendingHashId) setStatus('Buscando el mercado…')
 else void setMarket(market)
 
 window.addEventListener('hashchange', () => {
-  const [id, tfId] = decodeURIComponent(location.hash.slice(1)).split('/')
+  const [id, tfId] = readHash().split('/')
   const m = catalog.find(x => x.id === id)
   if (tfId && tfId !== tf.id) setTimeframe(timeframeById(tfId))
   if (m && m.id !== market.id) void setMarket(m)

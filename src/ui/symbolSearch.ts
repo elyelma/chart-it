@@ -53,11 +53,20 @@ export class SymbolSearch {
     })
   }
 
+  private unavailable: string[] = []
+
+  /** Sources that did not answer (blocked in this region or down). */
+  setUnavailable(labels: string[]): void {
+    this.unavailable = labels
+    this.setMarkets(this.markets, false)
+  }
+
   setMarkets(ms: Market[], loading: boolean): void {
     this.markets = ms
     $('searchFoot').textContent = loading
       ? 'Cargando catálogo de símbolos…'
-      : `${ms.length.toLocaleString('es')} mercados · Binance, Bybit y Hyperliquid · ↑↓ para moverte, Enter para abrir`
+      : `${ms.length.toLocaleString('es')} mercados · ↑↓ para moverte, Enter para abrir` +
+        (this.unavailable.length ? ` · No disponible desde aquí: ${this.unavailable.join(', ')}` : '')
     if (!this.root.hidden) this.render()
   }
 

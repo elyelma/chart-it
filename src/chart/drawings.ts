@@ -38,6 +38,8 @@ export interface DrawingEvents {
   onTextRequest(current: string): Promise<string | null>
   /** Right click on a drawing (it is already selected). */
   onContextMenu?(overlay: Overlay): void
+  /** Saving to the browser failed (disk full, private mode…). */
+  onSaveError?(err: unknown): void
 }
 
 /**
@@ -399,6 +401,6 @@ export class DrawingManager {
     this.saveTimer = null
     const p = this.pendingSave
     this.pendingSave = null
-    if (p) void drawingsDb.put(p.key, JSON.parse(p.snap))
+    if (p) drawingsDb.put(p.key, JSON.parse(p.snap)).catch(err => this.ev.onSaveError?.(err))
   }
 }

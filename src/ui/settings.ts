@@ -30,10 +30,15 @@ const SCALES: Array<[PriceScale, string]> = [
 ]
 
 export function readPrefs(): Prefs {
+  let saved: Partial<Prefs> = {}
   try {
-    return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<Prefs>) }
+    saved = (JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<Prefs>) ?? {}
   } catch {
-    return { ...DEFAULTS }
+    /* corrupted: defaults */
+  }
+  return {
+    candle: CANDLES.some(([id]) => id === saved.candle) ? (saved.candle as CandleType) : DEFAULTS.candle,
+    scale: SCALES.some(([id]) => id === saved.scale) ? (saved.scale as PriceScale) : DEFAULTS.scale
   }
 }
 
@@ -128,6 +133,7 @@ export class SettingsMenu {
     legal.innerHTML =
       '<a href="/legal/terminos.html" target="_blank" rel="noopener">Términos</a>' +
       '<a href="/legal/privacidad.html" target="_blank" rel="noopener">Privacidad</a>' +
+      '<a href="/legal/licencias-terceros.txt" target="_blank" rel="noopener">Licencias</a>' +
       `<span>Chart-It ${__APP_VERSION__}</span>`
     body.appendChild(legal)
   }
@@ -158,6 +164,7 @@ export class SettingsMenu {
     a.download = `chart-it-respaldo-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+    localStorage.setItem('chartit:last-backup', String(Date.now()))
     toast(`Respaldo descargado: ${count.toLocaleString('es')} dibujos en ${entries.length} símbolos.`)
   }
 
@@ -193,7 +200,12 @@ export class SettingsMenu {
     })
     if (ok === null) return
     this.hooks.beforeImport()
-    for (const [k, v] of drawings) await drawingsDb.put(k, v)
+    try {
+      for (const [k, v] of drawings) await drawingsDb.put(k, v)
+    } catch {
+      toast('No se pudo restaurar el respaldo: el navegador no permitió guardar los dibujos.', 'error', 8000)
+      return
+    }
     for (const [k, v] of Object.entries(data.storage ?? {})) {
       if (k.startsWith('chartit:') && typeof v === 'string' && !NOT_BACKED_UP.includes(k)) localStorage.setItem(k, v)
     }

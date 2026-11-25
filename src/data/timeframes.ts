@@ -47,12 +47,15 @@ export function longName(tf: Timeframe): string {
   return `${n} ${n === 1 ? UNIT[unit].one : UNIT[unit].many}`
 }
 
+// Bare "m" / "M" are case-sensitive (minutes / months); whole words are not.
 const WORDS: Array<[RegExp, TfUnit]> = [
-  [/^(m|min|mins|minuto|minutos)$/, 'm'],
+  [/^m$/, 'm'],
+  [/^M$/, 'M'],
+  [/^(min|mins|minuto|minutos)$/i, 'm'],
   [/^(h|hr|hrs|hora|horas)$/i, 'h'],
   [/^(d|dia|dias|día|días)$/i, 'd'],
   [/^(s|w|sem|semana|semanas|week)$/i, 'w'],
-  [/^(M|mes|meses|mo)$/, 'M']
+  [/^(mes|meses|mo)$/i, 'M']
 ]
 
 /**
@@ -73,9 +76,10 @@ export function parseTimeframe(text: string): Timeframe | { error: string } {
 }
 
 export function timeframeById(id: string | null | undefined): Timeframe {
-  const m = /^(\d+)([mhdwM])$/.exec(id ?? '')
+  const m = /^([1-9]\d*)([mhdwM])$/.exec(id ?? '')
   if (!m) return makeTimeframe(1, 'h')
-  return makeTimeframe(Number(m[1]), m[2] as TfUnit)
+  const unit = m[2] as TfUnit
+  return makeTimeframe(Math.min(Number(m[1]), UNIT[unit].max), unit)
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +107,7 @@ export function bucketStart(tf: Timeframe, ts: number): number {
 export function baseFor(tf: Timeframe, native: string[]): Timeframe | null {
   const { unit } = partsOf(tf)
   if (unit === 'w') return native.includes('1w') ? makeTimeframe(1, 'w') : native.includes('1d') ? makeTimeframe(1, 'd') : null
-  if (unit === 'M') return native.includes('1M') ? makeTimeframe(1, 'M') : null
+  if (unit === 'M') return native.includes('1M') ? makeTimeframe(1, 'M') : native.includes('1d') ? makeTimeframe(1, 'd') : null
   const fits = native
     .map(id => timeframeById(id))
     .filter(b => partsOf(b).unit !== 'w' && partsOf(b).unit !== 'M' && b.ms < tf.ms && tf.ms % b.ms === 0)

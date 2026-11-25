@@ -68,8 +68,15 @@ export class IndicatorsPanel {
   private query = ''
 
   constructor(private chart: Chart) {
-    this.active = readJson<string[]>(ACTIVE_KEY, ['VOL']).filter(n => byName(n))
-    this.params = readJson<Record<string, number[]>>(PARAMS_KEY, {})
+    const active = readJson<unknown>(ACTIVE_KEY, ['VOL'])
+    this.active = Array.isArray(active) ? active.filter((n): n is string => typeof n === 'string' && !!byName(n)) : ['VOL']
+    const params = readJson<unknown>(PARAMS_KEY, {})
+    this.params = {}
+    if (params && typeof params === 'object') {
+      for (const [k, v] of Object.entries(params)) {
+        if (byName(k) && Array.isArray(v) && v.every(n => typeof n === 'number' && Number.isFinite(n) && n > 0)) this.params[k] = v
+      }
+    }
     const btn = $('indBtn')
     btn.innerHTML = `${icon('fx')}<span>Indicadores</span>`
     this.popup = new Popup(this.panel, [btn], {

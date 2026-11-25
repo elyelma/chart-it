@@ -1,0 +1,104 @@
+<!doctype html>
+<!--
+  BORRADOR — NO PUBLICAR SIN REVISIÓN LEGAL.
+  Redactado por el equipo de producto el 2026-11-25 como punto de partida.
+  Debe revisarlo un abogado: según dónde viva el titular y dónde estén los
+  usuarios pueden aplicar, entre otras, la LFPDPPP (México), la Ley 1581 (Colombia),
+  la Ley 25.326 (Argentina), la LGPD (Brasil) o el RGPD (UE). Confirmar si hace
+  falta designar responsable/representante y cómo atender solicitudes de derechos.
+  Sección 4 (analítica): dejarla solo si se activa Cloudflare Web Analytics; si se
+  usa otra herramienta o ninguna, ajustar el texto. Verificar con la documentación
+  vigente de Cloudflare que la analítica no usa cookies ni almacenamiento local.
+  Reemplazar todos los marcadores entre corchetes.
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Aviso de privacidad · Chart-It</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/legal/legal.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">Chart<b>-It</b></a>
+      <nav>
+        <a href="/legal/terminos.html">Términos</a>
+        <a href="/legal/privacidad.html" aria-current="page">Privacidad</a>
+        <a href="/">Volver a los gráficos</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Aviso de privacidad</h1>
+      <p class="meta">Última actualización: [fecha]</p>
+
+      <div class="note">
+        <p><strong>En pocas palabras:</strong> Chart-It no tiene cuentas ni servidores propios que guarden tus datos. Tus dibujos y ajustes se quedan en tu navegador. No usamos cookies de seguimiento ni publicidad. Los precios los pide tu navegador directamente a los exchanges.</p>
+      </div>
+
+      <h2>1. Responsable</h2>
+      <p>El responsable de Chart-It es [nombre del titular], con domicilio en [país / jurisdicción]. Contacto para temas de privacidad: [correo de contacto].</p>
+
+      <h2>2. Qué datos guardamos: ninguno en nuestros servidores</h2>
+      <p>Chart-It es un sitio estático: no hay registro, inicio de sesión ni base de datos nuestra. No recibimos tus dibujos, tus listas ni lo que buscas.</p>
+
+      <h2>3. Qué se guarda en tu navegador</h2>
+      <p>Para que el servicio funcione, Chart-It guarda información <strong>solo en tu dispositivo</strong>, usando el almacenamiento del navegador (no son cookies y no se envían a ningún servidor):</p>
+      <table>
+        <thead><tr><th>Dónde</th><th>Qué</th><th>Para qué</th></tr></thead>
+        <tbody>
+          <tr><td>IndexedDB (<code>chart-it</code>)</td><td>Tus dibujos, por símbolo</td><td>Que sigan ahí cuando vuelvas</td></tr>
+          <tr><td>localStorage (claves <code>chartit:…</code>)</td><td>Último símbolo y temporalidad, lista, favoritos, indicadores, preferencias del gráfico</td><td>Recordar tu configuración</td></tr>
+          <tr><td>localStorage (<code>chartit:catalog:…</code>)</td><td>Copia temporal del listado de símbolos</td><td>Cargar más rápido (se renueva sola)</td></tr>
+        </tbody>
+      </table>
+      <p>Chart-It puede pedirle al navegador que marque este almacenamiento como “persistente” para que no lo borre por falta de espacio. Algunos navegadores te piden permiso para eso; puedes negarlo.</p>
+      <p>Si usas <em>Descargar respaldo</em>, se crea un archivo en tu equipo con tus dibujos y ajustes. Ese archivo no pasa por nosotros; cuídalo como cualquier archivo personal.</p>
+
+      <h2>4. Estadísticas de uso</h2>
+      <p>Para saber cuántas personas usan Chart-It y qué páginas cargan, usamos Cloudflare Web Analytics, que según su proveedor no usa cookies ni almacenamiento en tu navegador para seguirte. Recibimos solo cifras agregadas (visitas, país, tipo de navegador y dispositivo, páginas), no datos que te identifiquen. No usamos publicidad ni rastreadores de terceros, y no vendemos datos.</p>
+
+      <h2>5. A quién se conecta tu navegador</h2>
+      <p>Al usar Chart-It, tu navegador se conecta directamente con estos terceros. Como en cualquier visita web, ellos reciben tu dirección IP y datos técnicos del navegador, y los tratan según sus propias políticas:</p>
+      <ul>
+        <li><strong>Cloudflare</strong> (alojamiento del sitio y estadísticas): entrega los archivos de la aplicación.</li>
+        <li><strong>Binance</strong> (<code>binance.com</code>), <strong>Bybit</strong> (<code>bybit.com</code>) y <strong>Hyperliquid</strong> (<code>hyperliquid.xyz</code>): tu navegador les pide precios y velas del símbolo que estás viendo y de tu lista.</li>
+      </ul>
+      <p>Chart-It no les envía tus dibujos ni ningún dato tuyo, más allá de qué símbolo y temporalidad se están pidiendo. Te recomendamos revisar las políticas de privacidad de esos servicios.</p>
+      <p>La tipografía va incluida en la aplicación: no se descarga de servicios externos de fuentes.</p>
+
+      <h2>6. Cookies</h2>
+      <p>Chart-It no usa cookies propias de seguimiento, publicidad ni perfilado. Por eso no te mostramos un banner de cookies. Si en el futuro esto cambia, lo indicaremos aquí y te pediremos consentimiento cuando la ley lo exija.</p>
+
+      <h2>7. Cómo borrar tus datos</h2>
+      <p>Como todo está en tu navegador, tú tienes el control total. Para borrar todo lo que Chart-It guardó:</p>
+      <ul>
+        <li><strong>Chrome / Edge / Brave:</strong> en el sitio de Chart-It, haz clic en el icono a la izquierda de la dirección → <em>Configuración del sitio</em> → <em>Borrar datos</em>.</li>
+        <li><strong>Firefox:</strong> icono del candado → <em>Borrar cookies y datos del sitio</em>.</li>
+        <li><strong>Safari (Mac):</strong> <em>Ajustes → Privacidad → Gestionar datos de sitios web</em> → busca el dominio de Chart-It → <em>Eliminar</em>.</li>
+        <li><strong>Safari (iPhone/iPad):</strong> <em>Ajustes → Apps → Safari → Avanzado → Datos de sitios web</em>.</li>
+      </ul>
+      <p>Esto <strong>elimina tus dibujos de forma definitiva</strong> en ese navegador. Si quieres conservarlos, descarga antes un respaldo desde <em>Ajustes</em>. Nosotros no tenemos copia y no podemos recuperarlos.</p>
+
+      <h2>8. Si nos escribes</h2>
+      <p>Si nos envías un correo o un mensaje (por ejemplo, para reportar un error), usaremos tu dirección y lo que nos cuentes solo para responderte y mejorar el servicio. Puedes pedirnos que lo borremos escribiendo a [correo de contacto].</p>
+
+      <h2>9. Tus derechos</h2>
+      <p>Según la ley de tu país, puedes tener derecho a acceder, rectificar, cancelar u oponerte al tratamiento de tus datos personales, o a presentar un reclamo ante la autoridad de protección de datos. Como no guardamos datos tuyos en nuestros servidores, en la mayoría de los casos el borrado lo haces tú desde el navegador (sección 7). Para cualquier solicitud, escribe a [correo de contacto].</p>
+
+      <h2>10. Menores de edad</h2>
+      <p>Chart-It no está dirigido a menores de edad y no recopila datos de ellos a sabiendas.</p>
+
+      <h2>11. Cambios</h2>
+      <p>Si cambiamos este aviso, publicaremos la nueva versión en esta página con su fecha de actualización.</p>
+    </main>
+
+    <footer>
+      <a href="/legal/terminos.html">Términos de uso</a> · <a href="/legal/licencias-terceros.txt">Licencias de terceros</a> · <a href="/">Chart-It</a>
+    </footer>
+  </div>
+</body>
+</html>
