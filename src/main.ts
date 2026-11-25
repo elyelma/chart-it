@@ -4,7 +4,7 @@ import './chart/overlays'
 import { init, type Chart, type KLineData } from 'klinecharts'
 import { DrawingManager } from './chart/drawings'
 import { TOOLS } from './chart/overlays'
-import { CHART_STYLES, COLORS } from './chart/theme'
+import { CHART_STYLES, COLORS, FONT } from './chart/theme'
 import { isBuilt, loadBars, subscribeBars } from './data/bars'
 import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/registry'
 import { timeframeById } from './data/timeframes'
@@ -48,6 +48,8 @@ let market: Market = last.market
 let tf: Timeframe = timeframeById(last.tf)
 let catalog: Market[] = cachedMarkets() ?? []
 let loadToken = 0
+/** Market asked for in the link but not in the cached catalog yet. */
+let pendingHashId: string | null = null
 let unsubscribe: (() => void) | null = null
 let lastBar: KLineData | null = null
 
@@ -62,7 +64,52 @@ const chart = init('chart', {
 const status = $('chartStatus')
 function setStatus(text: string | null): void {
   status.hidden = !text
+  status.classList.remove('error')
   status.textContent = text ?? ''
+}
+
+/** Load failure: say why in plain words and offer the same asset from another source. */
+function showLoadError(m: Market, err: Error): void {
+  const src = adapterOf(m.source).label
+  const blocked = /HTTP (451|403)/.test(err.message)
+  const offline = !navigator.onLine
+  const base = m.aliases[0]?.toUpperCase()
+  const alternatives = catalog
+    .filter(x => x.source !== m.source && x.aliases[0]?.toUpperCase() === base)
+    .slice(0, 3)
+  status.hidden = false
+  status.classList.add('error')
+  status.innerHTML = ''
+  const card = document.createElement('div')
+  card.className = 'load-error'
+  const title = document.createElement('b')
+  title.textContent = offline ? 'Sin conexión a internet' : blocked ? `${src} no está disponible desde tu región` : `No pudimos cargar ${m.ticker}`
+  const msg = document.createElement('p')
+  msg.textContent = offline
+    ? 'Los dibujos siguen a salvo. Cuando vuelva la conexión, recarga el gráfico.'
+    : alternatives.length
+      ? 'Puedes ver el mismo activo desde otra fuente:'
+      : `${src} no respondió (${err.message}). Prueba de nuevo en un momento.`
+  card.append(title, msg)
+  const actions = document.createElement('div')
+  actions.className = 'load-error-actions'
+  for (const alt of alternatives) {
+    const b = document.createElement('button')
+    b.className = 'btn'
+    b.textContent = `${alt.ticker} · ${adapterOf(alt.source).label}`
+    b.onclick = () => void setMarket(alt)
+    actions.appendChild(b)
+  }
+  const retry = document.createElement('button')
+  retry.className = 'btn ghost'
+  retry.textContent = 'Reintentar'
+  retry.onclick = () => {
+    setStatus('Cargando velas…')
+    chart.resetData()
+  }
+  actions.appendChild(retry)
+  card.appendChild(actions)
+  status.appendChild(card)
 }
 
 chart.setDataLoader({
@@ -92,8 +139,7 @@ chart.setDataLoader({
       if (token !== loadToken) return
       callback([], { forward: false, backward: false })
       if (type === 'init') {
-        setStatus('No se pudieron cargar los datos.')
-        toast(`${adapterOf(m.source).label}: ${(err as Error).message}`, 'error', 6000)
+        showLoadError(m, err as Error)
         drawings.dataReady()
       }
     }
@@ -250,6 +296,12 @@ function applyCatalog(ms: Market[], loading: boolean): void {
 applyCatalog(catalog, catalog.length === 0)
 void loadAllMarkets().then(({ markets, failed }) => {
   if (markets.length) applyCatalog(markets, false)
+  if (pendingHashId) {
+    const m = markets.find(x => x.id === pendingHashId)
+    pendingHashId = null
+    if (!m) toast('No encontramos el mercado del enlace; te mostramos el último que abriste.', 'info', 6000)
+    void setMarket(m ?? market)
+  }
   if (failed.length) toast(`No se pudo cargar el catálogo de: ${failed.join(', ')}`, 'error', 6000)
   void refreshTickers()
 })
@@ -264,13 +316,61 @@ new SettingsMenu(chart, { onShortcuts: () => shortcuts.open(), beforeImport: () 
 
 // ------------------------------------------------------------- screenshot --
 
-$('shotBtn').onclick = () => {
-  const url = chart.getConvertPictureUrl(true, 'png', COLORS.bg)
+/** Chart picture with a slim branded footer: market, timeframe, source and date. */
+async function snapshot(): Promise<void> {
+  const img = new Image()
+  img.src = chart.getConvertPictureUrl(true, 'png', COLORS.bg)
+  await img.decode()
+  const foot = 40
+  const ratio = img.width / Math.max(1, $('chart').clientWidth)
+  const c = document.createElement('canvas')
+  c.width = img.width
+  c.height = img.height + Math.round(foot * ratio)
+  const g = c.getContext('2d') as CanvasRenderingContext2D
+  g.fillStyle = COLORS.bg
+  g.fillRect(0, 0, c.width, c.height)
+  g.drawImage(img, 0, 0)
+  g.scale(ratio, ratio)
+  const y = img.height / ratio
+  const w = c.width / ratio
+  g.fillStyle = 'rgba(255,255,255,0.06)'
+  g.fillRect(0, y, w, 1)
+  const mid = y + foot / 2
+  // logo tile
+  const grad = g.createLinearGradient(14, mid - 9, 32, mid + 9)
+  grad.addColorStop(0, '#9686FF')
+  grad.addColorStop(1, '#6250E8')
+  g.fillStyle = grad
+  g.beginPath()
+  g.roundRect(14, mid - 9, 18, 18, 5)
+  g.fill()
+  g.strokeStyle = '#fff'
+  g.lineWidth = 1.8
+  g.lineCap = 'round'
+  g.lineJoin = 'round'
+  g.beginPath()
+  g.moveTo(17.5, mid + 3)
+  g.lineTo(21, mid - 0.5)
+  g.lineTo(23.3, mid + 1.8)
+  g.lineTo(28.5, mid - 4)
+  g.stroke()
+  g.textBaseline = 'middle'
+  g.font = `600 13px ${FONT}`
+  g.fillStyle = COLORS.textStrong
+  g.fillText('Chart-It', 40, mid)
+  g.font = `500 12px ${FONT}`
+  g.fillStyle = COLORS.text2
+  const label = `${market.ticker} · ${tf.label} · ${adapterOf(market.source).label}`
+  g.fillText(label, 40 + g.measureText('Chart-It').width + 14, mid)
+  g.textAlign = 'right'
+  g.fillStyle = COLORS.text
+  g.fillText(new Date().toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' }), w - 14, mid)
   const a = document.createElement('a')
-  a.href = url
+  a.href = c.toDataURL('image/png')
   a.download = `Chart-It_${market.ticker}_${tf.id}_${new Date().toISOString().slice(0, 10)}.png`
   a.click()
 }
+$('shotBtn').onclick = () => void snapshot().catch(() => toast('No se pudo crear la imagen.', 'error'))
 
 // --------------------------------------------------------------- keyboard --
 
@@ -382,11 +482,14 @@ if (hash) {
   const [id, tfId] = hash.split('/')
   const fromHash = catalog.find(m => m.id === id)
   if (fromHash) market = fromHash
+  else if (id) pendingHashId = id
   if (tfId) tf = timeframeById(tfId)
 }
 
 chart.setPeriod(tf.period)
-void setMarket(market)
+// A shared link to a market we do not know yet waits for the catalog (about a second).
+if (pendingHashId) setStatus('Buscando el mercado…')
+else void setMarket(market)
 
 window.addEventListener('hashchange', () => {
   const [id, tfId] = decodeURIComponent(location.hash.slice(1)).split('/')

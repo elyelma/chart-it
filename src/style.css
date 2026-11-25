@@ -621,3 +621,13 @@ kbd {
 .welcome kbd { height: 18px; min-width: 18px; }
 .welcome-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 @media (max-width: 640px) { .welcome { left: 8px; right: 8px; width: auto; } }
+
+/* Load error card (inside the chart status layer) */
+.chart-status.error { pointer-events: auto; background: rgba(11, 13, 18, 0.6); }
+.load-error {
+  max-width: 420px; padding: 20px; border-radius: 14px; text-align: center;
+  background: var(--elev); box-shadow: 0 0 0 1px var(--hair-2), var(--shadow-pop);
+}
+.load-error b { display: block; color: var(--text); font-size: 15px; font-weight: 600; }
+.load-error p { margin: 8px 0 14px; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.load-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
