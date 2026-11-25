@@ -9,12 +9,13 @@ import { isBuilt, loadBars, subscribeBars } from './data/bars'
 import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/registry'
 import { timeframeById } from './data/timeframes'
 import type { Market, Timeframe } from './data/types'
+import { liveEvents } from './data/util'
 import { requestPersistentStorage } from './store/db'
 import { DrawingMenu } from './ui/contextMenu'
 import { Dock } from './ui/dock'
 import { dialog, installTooltips, toast } from './ui/feedback'
 import { icon, LOGO } from './ui/icons'
-import { closeTopPopup } from './ui/popup'
+import { closeButton, closeTopPopup } from './ui/popup'
 import { SymbolSearch } from './ui/symbolSearch'
 import { IndicatorsPanel } from './ui/indicators'
 import { applyPrefs, readPrefs, SettingsMenu } from './ui/settings'
@@ -319,7 +320,58 @@ document.addEventListener('keydown', e => {
   }
 })
 
+// ---------------------------------------------------------- live status --
+
+const liveDot = $('liveDot')
+function setLive(state: 'live' | 'reconnecting' | 'offline'): void {
+  liveDot.className = `live-dot ${state}`
+  liveDot.dataset.tip =
+    state === 'live' ? 'En vivo: precios en tiempo real' : state === 'offline' ? 'Sin conexión a internet' : 'Reconectando con el exchange…'
+}
+let resyncTimer: ReturnType<typeof setTimeout> | null = null
+liveEvents.addEventListener('open', e => {
+  setLive(navigator.onLine ? 'live' : 'offline')
+  // After a cut, candles from the gap are missing: reload them once.
+  if ((e as CustomEvent<{ reconnect: boolean }>).detail.reconnect) {
+    if (resyncTimer) clearTimeout(resyncTimer)
+    resyncTimer = setTimeout(() => chart.resetData(), 600)
+  }
+})
+liveEvents.addEventListener('drop', () => setLive(navigator.onLine ? 'reconnecting' : 'offline'))
+window.addEventListener('offline', () => setLive('offline'))
+window.addEventListener('online', () => setLive('reconnecting'))
+
+// ---------------------------------------------------------------- welcome --
+
+const WELCOME_KEY = 'chartit:welcome-seen'
+if (!localStorage.getItem(WELCOME_KEY)) {
+  const w = $('welcome')
+  w.innerHTML = `
+    <div class="welcome-head">${LOGO}<b>Bienvenido a Chart-It</b></div>
+    <p>Dibuja todo lo que quieras, sin límites. Gratis y sin cuenta.</p>
+    <ul>
+      <li><b>Dibujos</b> abre todas las herramientas. Marca ${icon('star', 13)} las que más uses y quedan abajo.</li>
+      <li><kbd>Ctrl</kbd> <kbd>K</kbd> busca cualquier mercado: <i>oro</i>, <i>nasdaq</i>, <i>EURUSD</i>, <i>BTC</i>.</li>
+      <li>Tus dibujos se guardan en este navegador. Haz respaldos desde ${icon('gear', 13)} Ajustes.</li>
+    </ul>
+    <div class="welcome-actions"><button class="btn primary" id="welcomeOk">Empezar a dibujar</button></div>`
+  w.hidden = false
+  const close = () => {
+    localStorage.setItem(WELCOME_KEY, '1')
+    w.hidden = true
+  }
+  $('welcomeOk').onclick = close
+  const x = closeButton(close)
+  x.classList.add('welcome-x')
+  w.prepend(x)
+}
+
 // ------------------------------------------------------------------- boot --
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}
+
 
 installTooltips()
 requestPersistentStorage()

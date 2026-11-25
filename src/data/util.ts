@@ -100,7 +100,15 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 // WebSocket that reconnects by itself until closed on purpose
 // ---------------------------------------------------------------------------
 
+/**
+ * Connection events of every live socket: "drop" when one is lost without
+ * being closed on purpose, "open" when one connects (detail.reconnect = it
+ * had dropped before, so candles may be missing in between).
+ */
+export const liveEvents = new EventTarget()
+
 export class LiveSocket {
+  private dropped = false
   private ws: WebSocket | null = null
   private closed = false
   private retry = 0
@@ -122,6 +130,8 @@ export class LiveSocket {
     this.ws = ws
     ws.onopen = () => {
       this.retry = 0
+      liveEvents.dispatchEvent(new CustomEvent('open', { detail: { reconnect: this.dropped } }))
+      this.dropped = false
       this.onOpen(ws)
       if (this.ping) {
         const { message, everyMs } = this.ping
@@ -139,6 +149,8 @@ export class LiveSocket {
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.pingTimer = null
       if (this.closed) return
+      if (!this.dropped) liveEvents.dispatchEvent(new Event('drop'))
+      this.dropped = true
       const delay = Math.min(10_000, 1000 * 2 ** this.retry++)
       this.reconnectTimer = setTimeout(() => this.connect(), delay)
     }

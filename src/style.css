@@ -503,10 +503,23 @@ kbd {
   .quote-change { display: none; }
 }
 @media (max-width: 640px) {
-  .topbar { gap: 2px; padding: 0 6px; overflow-x: auto; }
+  /* Two rows: market + price on top, controls below. */
+  .topbar { flex-wrap: wrap; height: auto; padding: 6px 8px; gap: 4px; row-gap: 6px; }
+  .topbar .vsep, .topbar .spacer, #shotBtn { display: none; }
+  .quote { order: 1; margin-left: auto; padding: 0; }
+  .topbar::after { content: ''; order: 2; flex-basis: 100%; height: 0; }
+  .tf-wrap { order: 3; flex: 1 1 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .tf-wrap::-webkit-scrollbar { display: none; }
+  #indBtn, #drawBtn, #settingsBtn, #listBtn { order: 4; }
+  .tb-btn { padding: 0 8px; }
   .tb-btn span { display: none; }
-  .vsep { display: none; }
-  .draw-palette, .tf-picker { width: calc(100vw - 16px); left: 8px !important; }
+  .sym-src { max-width: 120px; }
+  .panel { left: 8px !important; right: 8px; width: auto !important; }
+  .center-panel { transform: none; top: 10vh; }
+  .props { left: 8px; right: 8px; transform: none; overflow-x: auto; animation: none; }
+  .toolbar { padding: 0 4px; }
+  .toolbar button.tool { width: 36px; height: 36px; }
+  .watchlist { top: 0; width: min(300px, 86vw); }
 }
 
 /* -------------------------------------------------------------- settings -- */
@@ -578,3 +591,33 @@ kbd {
 .cm-item.danger:hover { background: rgba(242, 86, 108, 0.1); color: var(--down); }
 .cm-item.danger:hover svg { color: var(--down); }
 .cm-sep { height: 1px; background: var(--hair); margin: 4px 6px; }
+
+/* ------------------------------------------------------------ live dot -- */
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: 0 0 auto; position: relative; }
+.live-dot.live { background: var(--up); }
+.live-dot.live::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1px solid var(--up);
+  animation: pulse 2.4s ease-out infinite;
+}
+.live-dot.reconnecting { background: var(--gold); }
+.live-dot.offline { background: var(--down); }
+@keyframes pulse { 0% { opacity: 0.6; transform: scale(0.6); } 70%, 100% { opacity: 0; transform: scale(1.6); } }
+
+/* --------------------------------------------------------------- welcome -- */
+.welcome {
+  position: fixed; left: 16px; bottom: calc(var(--bar-h) + 16px); z-index: 35; width: 360px;
+  padding: 18px 18px 16px; border-radius: 14px; background: var(--elev);
+  box-shadow: 0 0 0 1px var(--hair-2), var(--shadow-pop);
+  animation: pop 0.2s var(--ease);
+}
+.welcome-x { position: absolute; top: 10px; right: 10px; }
+.welcome-head { display: flex; align-items: center; gap: 10px; font-size: 15px; letter-spacing: -0.01em; }
+.welcome p { margin: 10px 0 8px; color: var(--text-2); }
+.welcome ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.welcome li { position: relative; padding-left: 16px; color: var(--text-2); line-height: 1.5; font-size: 12.5px; }
+.welcome li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.welcome li b { color: var(--text); font-weight: 600; }
+.welcome li svg { vertical-align: -2px; color: var(--text); }
+.welcome kbd { height: 18px; min-width: 18px; }
+.welcome-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+@media (max-width: 640px) { .welcome { left: 8px; right: 8px; width: auto; } }

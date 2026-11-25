@@ -71,4 +71,4 @@ export function icon(name: string, size = 18): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] ?? ''}</svg>`
 }
 
-export const LOGO = `<svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#7C6CFF"/><path d="M6 21l6-6 4 4 9-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="9" r="2.5" fill="#36E2B4"/></svg>`
+export const LOGO = `<svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="ci-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9686FF"/><stop offset="1" stop-color="#6250E8"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#ci-logo)"/><path d="M6 21l6-6 4 4 9-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="9" r="2.7" fill="#33D6A6"/></svg>`
