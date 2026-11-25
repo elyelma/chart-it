@@ -7,6 +7,7 @@ const GENERAL: Array<[string, string]> = [
   ['Ctrl K  ·  /', 'Buscar símbolo'],
   ['Ctrl Z', 'Deshacer'],
   ['Ctrl Y', 'Rehacer'],
+  ['Ctrl D', 'Duplicar el dibujo seleccionado'],
   ['Supr', 'Borrar el dibujo seleccionado'],
   ['Esc', 'Cerrar lo abierto · soltar la herramienta'],
   ['?', 'Esta ayuda']

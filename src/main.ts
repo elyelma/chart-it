@@ -50,7 +50,8 @@ function readJson<T>(key: string, fallback: T): T {
 function isMarket(x: unknown): x is Market {
   const m = x as Market | null
   return !!m && typeof m.id === 'string' && typeof m.source === 'string' && typeof m.symbol === 'string' &&
-    typeof m.ticker === 'string' && Array.isArray(m.aliases) && Number.isFinite(m.pricePrecision)
+    typeof m.ticker === 'string' && Array.isArray(m.aliases) && Number.isFinite(m.pricePrecision) &&
+    ['binance', 'binance-futures', 'bybit', 'hyperliquid'].includes(m.source)
 }
 const last = readJson<{ market?: unknown; tf?: unknown }>(LAST_KEY, {})
 let market: Market = isMarket(last.market) ? last.market : FALLBACK
@@ -247,6 +248,8 @@ function renderHeader(): void {
   star.innerHTML = icon('star')
   star.classList.toggle('on', watchlist.has(market.id))
   star.title = watchlist.has(market.id) ? 'Quitar de la lista' : 'Añadir a la lista'
+  star.setAttribute('aria-label', star.title)
+  star.setAttribute('aria-pressed', String(watchlist.has(market.id)))
   document.title = `${market.ticker} · Chart-It`
 }
 
@@ -262,8 +265,13 @@ function drawingsKey(m: Market): string {
   return readPrefs().shareDrawings ? `asset:${assetKey(m)}` : m.id
 }
 
+let switchingMarket = false
+
 async function setMarket(m: Market): Promise<void> {
   const token = ++loadToken
+  switchingMarket = true
+  // The person chose a market: a link still waiting for the catalog no longer applies.
+  pendingHashId = null
   market = m
   lastBar = null
   quoteChange = null
@@ -272,9 +280,14 @@ async function setMarket(m: Market): Promise<void> {
   renderQuote()
   watchlist.setCurrent(m.id)
   persist()
-  await drawings.setMarket(drawingsKey(m), m.id)
+  // Shared by asset: the same asset on every exchange contributes its own past drawings once.
+  const seeds = readPrefs().shareDrawings
+    ? [m.id, ...catalog.filter(x => x.id !== m.id && assetKey(x) === assetKey(m)).map(x => x.id)]
+    : []
+  await drawings.setMarket(drawingsKey(m), seeds)
   // Another market was picked while the drawings loaded: that call takes over.
   if (token !== loadToken) return
+  switchingMarket = false
   chart.setSymbol({ ticker: `${m.ticker} · ${adapterOf(m.source).label}`, id: m.id, pricePrecision: m.pricePrecision, volumePrecision: m.volumePrecision })
   void refreshTickers()
 }
@@ -304,7 +317,8 @@ function applyTimezone(): void {
 const watchlist = new Watchlist(m => void setMarket(m), () => renderHeader())
 $('starBtn').onclick = () => watchlist.toggle(market)
 
-const ui = readJson<{ list: boolean }>(UI_KEY, { list: window.innerWidth > 900 })
+const savedUi = readJson<unknown>(UI_KEY, null) as { list?: unknown } | null
+const ui = { list: typeof savedUi?.list === 'boolean' ? savedUi.list : window.innerWidth > 900 }
 function setListOpen(open: boolean): void {
   ui.list = open
   $('watchlist').hidden = !open
@@ -429,10 +443,14 @@ async function snapshot(): Promise<void> {
   g.textAlign = 'right'
   g.fillStyle = COLORS.text
   g.fillText(new Date().toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' }), w - 14, mid)
+  // A blob URL (not a data: URL) so large high-DPI images still download.
+  const blob = await new Promise<Blob | null>(r => c.toBlob(r, 'image/png'))
+  if (!blob) throw new Error('canvas')
   const a = document.createElement('a')
-  a.href = c.toDataURL('image/png')
+  a.href = URL.createObjectURL(blob)
   a.download = `Chart-It_${market.ticker}_${tf.id}_${new Date().toISOString().slice(0, 10)}.png`
   a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000)
 }
 $('shotBtn').onclick = () => void snapshot().catch(() => toast('No se pudo crear la imagen.', 'error'))
 
@@ -463,7 +481,7 @@ document.addEventListener('keydown', e => {
     if (k === 'z' && !e.shiftKey) {
       e.preventDefault()
       drawings.undo()
-    } else if (k === 'd') {
+    } else if (k === 'd' && drawings.selected) {
       e.preventDefault()
       drawings.duplicateSelected()
     } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
@@ -520,7 +538,9 @@ let resyncTimer: ReturnType<typeof setTimeout> | null = null
 liveEvents.addEventListener('open', e => {
   setLive(navigator.onLine ? 'live' : 'offline')
   // After a cut, candles from the gap are missing: reload them once.
-  if ((e as CustomEvent<{ reconnect: boolean }>).detail.reconnect) {
+  const { reconnect, downMs } = (e as CustomEvent<{ reconnect: boolean; downMs: number }>).detail
+  // Only after a real cut (a blip loses no candles), and not while a market switch reloads anyway.
+  if (reconnect && downMs > 5000 && !switchingMarket) {
     if (resyncTimer) clearTimeout(resyncTimer)
     resyncTimer = setTimeout(() => {
       loadToken++

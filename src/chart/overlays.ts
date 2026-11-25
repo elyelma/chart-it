@@ -268,6 +268,33 @@ export function getFibLevels(): number[] {
   return [...fibLevels]
 }
 
+/**
+ * Reads levels the way people type them: "0, 0.382, 0.618", "0; 0,382; 0,618",
+ * "0 38.2% 61.8%". A comma between digits is a decimal comma unless the list
+ * already uses dots or separates items with ", ".
+ */
+export function parseFibLevels(text: string): number[] | { error: string } {
+  const t = text.trim()
+  if (!t) return { error: 'Escribe al menos un nivel, por ejemplo 0, 0.5, 1.' }
+  let tokens: string[]
+  if (/;|,\s|\s/.test(t)) tokens = t.replace(/,\s+/g, ' ').split(/[;\s]+/).map(x => x.replace(',', '.'))
+  else if (t.includes('.')) tokens = t.split(',')
+  else if ((t.match(/,/g) ?? []).length === 1) tokens = [t.replace(',', '.')]
+  else tokens = t.split(',')
+  const out: number[] = []
+  for (const raw of tokens) {
+    const x = raw.trim().replace(/[.,]+$/, '')
+    if (!x) continue
+    const pct = x.endsWith('%')
+    const n = Number(pct ? x.slice(0, -1) : x) / (pct ? 100 : 1)
+    if (!Number.isFinite(n)) return { error: `"${x}" no es un número.` }
+    if (n < -5 || n > 10) return { error: `${x} está fuera de rango (usa valores entre -5 y 10).` }
+    out.push(n)
+  }
+  if (!out.length) return { error: 'Escribe al menos un nivel, por ejemplo 0, 0.5, 1.' }
+  return [...new Set(out)]
+}
+
 /** Levels for every retracement drawing (each trader uses their own: 0.705, 0.886…). */
 export function setFibLevels(levels: number[]): void {
   fibLevels = levels.length ? [...levels].sort((a, b) => a - b) : [...DEFAULT_FIB_LEVELS]

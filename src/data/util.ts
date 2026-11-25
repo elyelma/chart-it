@@ -110,6 +110,7 @@ export const liveEvents = new EventTarget()
 
 export class LiveSocket {
   private dropped = false
+  private droppedAt = 0
   private ws: WebSocket | null = null
   private closed = false
   private retry = 0
@@ -131,7 +132,9 @@ export class LiveSocket {
     this.ws = ws
     ws.onopen = () => {
       this.retry = 0
-      liveEvents.dispatchEvent(new CustomEvent('open', { detail: { reconnect: this.dropped } }))
+      liveEvents.dispatchEvent(
+        new CustomEvent('open', { detail: { reconnect: this.dropped, downMs: this.dropped ? Date.now() - this.droppedAt : 0 } })
+      )
       this.dropped = false
       this.onOpen(ws)
       if (this.ping) {
@@ -150,7 +153,10 @@ export class LiveSocket {
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.pingTimer = null
       if (this.closed) return
-      if (!this.dropped) liveEvents.dispatchEvent(new Event('drop'))
+      if (!this.dropped) {
+        liveEvents.dispatchEvent(new Event('drop'))
+        this.droppedAt = Date.now()
+      }
       this.dropped = true
       const delay = Math.min(10_000, 1000 * 2 ** this.retry++)
       this.reconnectTimer = setTimeout(() => this.connect(), delay)

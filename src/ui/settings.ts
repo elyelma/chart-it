@@ -1,5 +1,5 @@
 import type { CandleType, Chart } from 'klinecharts'
-import { DEFAULT_FIB_LEVELS, getFibLevels, setFibLevels } from '../chart/overlays'
+import { DEFAULT_FIB_LEVELS, getFibLevels, parseFibLevels, setFibLevels } from '../chart/overlays'
 import { setPriceScale, type PriceScale } from '../chart/volume'
 import { FEEDBACK_URL } from '../config'
 import { drawingsDb } from '../store/db'
@@ -145,12 +145,9 @@ export class SettingsMenu {
     }
     fib.onsubmit = e => {
       e.preventDefault()
-      const levels = fibInput.value
-        .split(/[,;\s]+/)
-        .map(x => Number(x.replace('%', '')) / (x.includes('%') ? 100 : 1))
-        .filter(n => Number.isFinite(n) && n >= -5 && n <= 10)
-      if (!levels.length) return toast('Escribe niveles como 0, 0.382, 0.618, 1', 'error')
-      setFibLevels([...new Set(levels)])
+      const levels = parseFibLevels(fibInput.value)
+      if ('error' in levels) return toast(levels.error, 'error')
+      setFibLevels(levels)
       this.redrawFib()
       this.render()
       toast('Niveles de Fibonacci actualizados en todos tus retrocesos.')
@@ -219,7 +216,13 @@ export class SettingsMenu {
   // ---------------------------------------------------------------- backup --
 
   private async exportBackup(): Promise<void> {
-    const entries = await drawingsDb.entries().catch(() => [] as Array<[string, unknown]>)
+    let entries: Array<[string, unknown]>
+    try {
+      entries = await drawingsDb.entries()
+    } catch {
+      toast('No se pudieron leer tus dibujos para el respaldo. Inténtalo de nuevo.', 'error')
+      return
+    }
     const storage: Record<string, string> = {}
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)

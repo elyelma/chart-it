@@ -3,7 +3,8 @@
  * Only the app's own files are cached. Market data (exchange APIs and
  * websockets) always goes to the network and is never stored.
  */
-const CACHE = 'chartit-v1'
+// Bump on releases that change the cached shell files (icons, manifest).
+const CACHE = 'chartit-v2'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', event => {
@@ -25,14 +26,18 @@ self.addEventListener('fetch', event => {
 
   // Pages: network first so updates arrive at once; cached copy when offline.
   if (req.mode === 'navigate') {
+    // Only the app page itself becomes the offline copy (not the legal pages, not error pages).
+    const isApp = url.pathname === '/' || url.pathname === '/index.html'
     event.respondWith(
       fetch(req)
         .then(res => {
-          const copy = res.clone()
-          caches.open(CACHE).then(c => c.put('/index.html', copy))
+          if (isApp && res.ok) {
+            const copy = res.clone()
+            event.waitUntil(caches.open(CACHE).then(c => c.put('/index.html', copy)))
+          }
           return res
         })
-        .catch(() => caches.match('/index.html'))
+        .catch(() => (isApp ? caches.match('/index.html') : caches.match(req)).then(r => r ?? caches.match('/index.html')))
     )
     return
   }
@@ -44,7 +49,7 @@ self.addEventListener('fetch', event => {
       return fetch(req).then(res => {
         if (res.ok && (url.pathname.startsWith('/assets/') || /\.(png|svg|woff2?)$/.test(url.pathname))) {
           const copy = res.clone()
-          caches.open(CACHE).then(c => c.put(req, copy))
+          event.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)))
         }
         return res
       })

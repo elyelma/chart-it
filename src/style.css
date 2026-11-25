@@ -305,6 +305,7 @@ kbd {
   position: fixed; z-index: 30;
   display: flex; flex-direction: column;
   max-height: calc(100vh - var(--top-h) - 24px);
+  max-height: calc(100dvh - var(--top-h) - 24px);
   background: var(--elev);
   border-radius: var(--r-lg);
   box-shadow: 0 0 0 1px var(--hair-2), var(--shadow-pop);
@@ -508,6 +509,7 @@ kbd {
 }
 @media (max-width: 640px) {
   /* Two rows: market + price on top, controls below. */
+  :root { --top-h: 92px; }
   .topbar { flex-wrap: wrap; height: auto; padding: 6px 8px; gap: 4px; row-gap: 6px; }
   .topbar .vsep, .topbar .spacer, #shotBtn { display: none; }
   .quote { order: 1; margin-left: auto; padding: 0; }

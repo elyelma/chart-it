@@ -1,10 +1,36 @@
-import type { Chart, DeepPartial, Overlay, OverlayCreate, OverlayStyle, Point } from 'klinecharts'
+import { getSupportedOverlays, type Chart, type DeepPartial, type Overlay, type OverlayCreate, type OverlayStyle, type Point } from 'klinecharts'
 import { drawingsDb } from '../store/db'
 import { FREEHAND_TOOLS, TEXT_TOOLS } from './overlays'
 import { DRAW_COLORS, drawingStyles } from './theme'
 
 const GROUP = 'drawings'
+/** Read lazily: our own overlays register when overlays.ts loads. */
+const KNOWN_OVERLAYS = { has: (name: string) => getSupportedOverlays().includes(name) }
 const TOOL_LOOKS_KEY = 'chartit:tool-looks'
+const MERGED_KEY = 'chartit:merged-markets'
+
+/** Markets whose own drawings were already merged into their shared asset. */
+function readMerged(): Set<string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(MERGED_KEY) ?? '[]') as unknown
+    return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeMerged(set: Set<string>): void {
+  try {
+    localStorage.setItem(MERGED_KEY, JSON.stringify([...set]))
+  } catch {
+    /* storage full: merging again later is harmless (duplicates are skipped) */
+  }
+}
+
+/** Identity of a drawing for de-duplication when merging. */
+function sameDrawing(d: SavedDrawing): string {
+  return JSON.stringify([d?.name, d?.points, d?.extendData])
+}
 
 function readToolLooks(): Record<string, Look> {
   try {
@@ -69,6 +95,14 @@ export class DrawingManager {
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private selectedId: string | null = null
   private looks = new Map<string, Look>()
+  /**
+   * Our own record of each drawing's stacking order. The library bumps a
+   * hovered drawing to the top by rewriting its zLevel, so that field cannot
+   * be trusted when saving.
+   */
+  private zs = new Map<string, number>()
+  /** Saved drawings this version cannot show (e.g. from a newer backup): kept as-is. */
+  private unknown: SavedDrawing[] = []
   /** While true, removals/creations we trigger ourselves are not recorded. */
   private muted = false
 
@@ -84,25 +118,43 @@ export class DrawingManager {
   // ---------------------------------------------------------------- market --
 
   /**
-   * Loads the drawings stored under `id`. If nothing was ever stored there,
-   * starts from the drawings of `seedId` (used when drawings become shared by
-   * asset: the market's own drawings carry over the first time).
+   * Loads the drawings stored under `id`. When drawings are shared by asset,
+   * `seedIds` are the asset's markets on every exchange: drawings each of them
+   * had on its own are merged in once (and the originals are left untouched).
    */
-  async setMarket(id: string, seedId?: string): Promise<void> {
+  async setMarket(id: string, seedIds: string[] = []): Promise<void> {
     this.flushSave()
     this.marketId = id
     this.silently(() => this.chart.removeOverlay({ groupId: GROUP }))
     this.looks.clear()
+    this.zs.clear()
+    this.unknown = []
     this.select(null)
     this.undoStack = []
     this.redoStack = []
     let stored = await drawingsDb.get<SavedDrawing[]>(this.key(id)).catch(() => undefined)
-    if (stored === undefined && seedId && seedId !== id) {
-      stored = await drawingsDb.get<SavedDrawing[]>(this.key(seedId)).catch(() => undefined)
-      // Keep the carried-over drawings under the new key right away, so the
-      // asset's other markets see them too.
-      if (Array.isArray(stored) && stored.length) {
-        drawingsDb.put(this.key(id), stored).catch(err => this.ev.onSaveError?.(err))
+    const merged = readMerged()
+    const pending = seedIds.filter(s => s !== id && !merged.has(s))
+    if (pending.length) {
+      const list: SavedDrawing[] = Array.isArray(stored) ? [...stored] : []
+      const seen = new Set(list.map(sameDrawing))
+      let added = 0
+      for (const sid of pending) {
+        const own = await drawingsDb.get<SavedDrawing[]>(this.key(sid)).catch(() => null)
+        if (own === null) continue // read failed: try again next time
+        merged.add(sid)
+        for (const d of Array.isArray(own) ? own : []) {
+          const k = sameDrawing(d)
+          if (seen.has(k)) continue
+          seen.add(k)
+          list.push(d)
+          added++
+        }
+      }
+      writeMerged(merged)
+      if (added) {
+        stored = list
+        drawingsDb.put(this.key(id), list).catch(err => this.ev.onSaveError?.(err))
       }
     }
     const saved = Array.isArray(stored) ? stored : []
@@ -258,12 +310,13 @@ export class DrawingManager {
       points: moved.map(p => ({ timestamp: p.timestamp, value: p.value })),
       styles: o.styles,
       extendData: o.extendData,
-      zLevel: o.zLevel,
+      zLevel: this.zOf(o.id),
       mode: this.magnet ? 'weak_magnet' : 'normal',
       ...this.handlers()
     })
     if (typeof id === 'string') {
       this.looks.set(id, look)
+      this.zs.set(id, this.zOf(o.id))
       this.commit()
       this.select(id)
     }
@@ -281,10 +334,21 @@ export class DrawingManager {
   reorderSelected(front: boolean): void {
     const o = this.selectedOverlay()
     if (!o) return
-    const levels = this.finished().map(x => x.zLevel ?? 0)
-    const z = front ? Math.max(0, ...levels) + 1 : Math.min(0, ...levels) - 1
+    let z = 0
+    for (const x of this.finished()) {
+      if (x.id === o.id) continue
+      const v = this.zOf(x.id)
+      z = front ? Math.max(z, v + 1) : Math.min(z, v - 1)
+    }
+    this.zs.set(o.id, z)
     this.chart.overrideOverlay({ id: o.id, zLevel: z })
+    // While hovered, the library restores this value when the mouse leaves.
+    ;(o as unknown as { setPrevZLevel?: (z: number) => void }).setPrevZLevel?.(z)
     this.commit()
+  }
+
+  private zOf(id: string): number {
+    return this.zs.get(id) ?? 0
   }
 
   private selectedOverlay(): Overlay | undefined {
@@ -393,16 +457,16 @@ export class DrawingManager {
   }
 
   private serialize(): SavedDrawing[] {
-    return this.finished().map(o => ({
+    return this.finished().map<SavedDrawing>(o => ({
       name: o.name,
       points: o.points.map(p => ({ timestamp: p.timestamp ?? 0, value: p.value ?? 0 })),
       styles: o.styles,
       extendData: o.extendData,
       lock: o.lock,
       visible: o.visible,
-      zLevel: o.zLevel || undefined,
+      zLevel: this.zOf(o.id) || undefined,
       look: this.looks.get(o.id)
-    }))
+    })).concat(this.unknown)
   }
 
   private apply(list: SavedDrawing[]): void {
@@ -427,7 +491,17 @@ export class DrawingManager {
   private applyUnmuted(list: SavedDrawing[]): void {
     this.chart.removeOverlay({ groupId: GROUP })
     this.looks.clear()
+    this.zs.clear()
+    this.unknown = []
     for (const d of list) {
+      // Skip broken entries (hand-edited or damaged backups) instead of failing the whole load.
+      if (!d || typeof d.name !== 'string' || !Array.isArray(d.points)) continue
+      if (!KNOWN_OVERLAYS.has(d.name)) {
+        this.unknown.push(d)
+        continue
+      }
+      // Repairs values saved while the library had a drawing raised on hover.
+      const z = Number.isFinite(d.zLevel) && Math.abs(d.zLevel as number) < 1e6 ? (d.zLevel as number) : 0
       const id = this.chart.createOverlay({
         name: d.name,
         groupId: GROUP,
@@ -436,11 +510,13 @@ export class DrawingManager {
         extendData: d.extendData,
         lock: d.lock,
         visible: d.visible,
-        zLevel: d.zLevel ?? 0,
+        zLevel: z,
         mode: this.magnet ? 'weak_magnet' : 'normal',
         ...this.handlers()
       })
-      if (typeof id === 'string' && d.look) this.looks.set(id, d.look)
+      if (typeof id !== 'string') continue
+      this.zs.set(id, z)
+      if (d.look) this.looks.set(id, d.look)
     }
   }
 

@@ -72,7 +72,36 @@ export function dialog(opts: DialogOpts): Promise<string | null> {
   })
 }
 
+/**
+ * Icon-only buttons carry their name in data-tip (shown as a tooltip). Mirror
+ * it into aria-label so screen readers announce it too, now and for anything
+ * rendered later.
+ */
+function syncLabel(el: HTMLElement): void {
+  const tip = el.dataset.tip
+  if (!tip) return
+  if (!el.hasAttribute('aria-label') || el.dataset.autoLabel) {
+    el.setAttribute('aria-label', tip)
+    el.dataset.autoLabel = '1'
+  }
+}
+
+function installAccessibleLabels(): void {
+  document.querySelectorAll<HTMLElement>('[data-tip]').forEach(syncLabel)
+  new MutationObserver(records => {
+    for (const r of records) {
+      if (r.type === 'attributes') syncLabel(r.target as HTMLElement)
+      r.addedNodes.forEach(n => {
+        if (!(n instanceof HTMLElement)) return
+        if (n.dataset.tip) syncLabel(n)
+        n.querySelectorAll<HTMLElement>('[data-tip]').forEach(syncLabel)
+      })
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-tip'] })
+}
+
 export function installTooltips(): void {
+  installAccessibleLabels()
   const tip = document.createElement('div')
   tip.className = 'tip'
   tip.hidden = true

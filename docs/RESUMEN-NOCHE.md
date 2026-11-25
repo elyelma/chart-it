@@ -3,7 +3,11 @@
 Trabajé de forma autónoma con un pequeño equipo de agentes:
 
 - **Desarrollo (yo):** construí todo lo de abajo y lo verifiqué en el navegador.
-- **QA / Tester (2 rondas):** creó 57 pruebas automáticas y encontró bugs reales; todos los confirmados están corregidos.
+- **QA / Tester (2 rondas):** creó la batería de pruebas automáticas (107, todas en verde) y encontró 17 bugs reales; todos los confirmados están corregidos. Entre ellos:
+  - el orden de los dibujos se corrompía al pasar el mouse encima;
+  - el modo sin conexión podía guardar la página de Términos en lugar de la app;
+  - las comas decimales ("0,382") rompían los niveles de Fibonacci;
+  - los botones de solo ícono no tenían nombre para lectores de pantalla.
 - **Producto / Lanzamiento:** escribió `docs/LAUNCH.md` (auditoría de lanzamiento), `README.md` y los borradores legales en `public/legal/`.
 
 Todo está en GitHub (`elyelma/chart-it`, rama `main`), en commits separados por tema. **No publiqué nada en internet**: la salida al público la decides tú.
