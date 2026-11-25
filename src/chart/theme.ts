@@ -24,14 +24,14 @@ export function alpha(hex: string, a: number): string {
 }
 
 /** Overlay styles for a given colour / width / dash, applied to every figure type. */
-export function drawingStyles(color: string, size = 2, dashed = false): DeepPartial<Styles['overlay']> {
+export function drawingStyles(color: string, size = 2, dashed = false, textSize = 14): DeepPartial<Styles['overlay']> {
   return {
     line: { color, size, style: dashed ? 'dashed' : 'solid', dashedValue: [6, 4] },
     polygon: { color: alpha(color, 0.1), borderColor: color, borderSize: size, borderStyle: dashed ? 'dashed' : 'solid' },
     rect: { color: alpha(color, 0.1), borderColor: color, borderSize: size },
     circle: { color: alpha(color, 0.1), borderColor: color, borderSize: size },
     arc: { color, size },
-    text: { color, backgroundColor: 'transparent', borderColor: 'transparent', size: 14, weight: 600, family: FONT },
+    text: { color, backgroundColor: 'transparent', borderColor: 'transparent', size: textSize, weight: 600, family: FONT },
     point: { color, borderColor: alpha(color, 0.3), activeColor: color, activeBorderColor: alpha(color, 0.3), radius: 4, activeRadius: 5 }
   }
 }
@@ -56,6 +56,14 @@ export const CHART_STYLES: DeepPartial<Styles> = {
     vertical: { color: 'rgba(255,255,255,0.028)', style: 'solid' }
   },
   candle: {
+    area: {
+      lineSize: 1.5,
+      lineColor: COLORS.accent,
+      backgroundColor: [
+        { offset: 0, color: alpha(COLORS.accent, 0.01) },
+        { offset: 1, color: alpha(COLORS.accent, 0.2) }
+      ]
+    },
     bar: {
       upColor: COLORS.up,
       downColor: COLORS.down,

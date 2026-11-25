@@ -112,6 +112,15 @@ export class Dock {
       b.onclick = () => this.dm.restyleSelected({ color: c })
       add(b)
     }
+    const custom = document.createElement('label')
+    custom.className = 'swatch custom' + (DRAW_COLORS.some(c => c.toLowerCase() === look.color.toLowerCase()) ? '' : ' on')
+    custom.dataset.tip = 'Otro color'
+    const picker = document.createElement('input')
+    picker.type = 'color'
+    picker.value = look.color.length === 7 ? look.color : '#ffffff'
+    picker.onchange = () => this.dm.restyleSelected({ color: picker.value })
+    custom.appendChild(picker)
+    add(custom)
     sep()
     for (const w of [1, 2, 3, 4]) {
       const b = this.pbtn(`<span class="weight" style="height:${w + 1}px"></span>`, `Grosor ${w}`, look.size === w)
@@ -121,6 +130,15 @@ export class Dock {
     const dash = this.pbtn(icon('dash', 20), 'Línea punteada', look.dashed)
     dash.onclick = () => this.dm.restyleSelected({ dashed: !look.dashed })
     add(dash)
+    const isText = o ? TEXT_TOOLS.has(o.name) : TEXT_TOOLS.has(this.tool)
+    if (isText) {
+      sep()
+      for (const [px, label] of [[12, 'Texto pequeño'], [14, 'Texto mediano'], [18, 'Texto grande'], [24, 'Texto muy grande']] as Array<[number, string]>) {
+        const b = this.pbtn(`<span style="font-size:${Math.round(px * 0.75)}px;font-weight:700">A</span>`, label, (look.textSize ?? 14) === px)
+        b.onclick = () => this.dm.restyleSelected({ textSize: px })
+        add(b)
+      }
+    }
     if (o) {
       sep()
       if (TEXT_TOOLS.has(o.name)) {

@@ -5,17 +5,20 @@ import { init, type Chart, type KLineData } from 'klinecharts'
 import { DrawingManager } from './chart/drawings'
 import { TOOLS } from './chart/overlays'
 import { CHART_STYLES, COLORS } from './chart/theme'
-import { hideVolume, showVolume } from './chart/volume'
 import { isBuilt, loadBars, subscribeBars } from './data/bars'
 import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/registry'
 import { timeframeById } from './data/timeframes'
 import type { Market, Timeframe } from './data/types'
 import { requestPersistentStorage } from './store/db'
+import { DrawingMenu } from './ui/contextMenu'
 import { Dock } from './ui/dock'
 import { dialog, installTooltips, toast } from './ui/feedback'
 import { icon, LOGO } from './ui/icons'
-import { closeTopPopup, panelHeader, placeBelow, Popup } from './ui/popup'
+import { closeTopPopup } from './ui/popup'
 import { SymbolSearch } from './ui/symbolSearch'
+import { IndicatorsPanel } from './ui/indicators'
+import { applyPrefs, readPrefs, SettingsMenu } from './ui/settings'
+import { ShortcutsSheet } from './ui/shortcuts'
 import { TimeframePicker } from './ui/tfPicker'
 import { formatPrice, Watchlist } from './ui/watchlist'
 
@@ -24,8 +27,6 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 // ------------------------------------------------------------------ state --
 
 const LAST_KEY = 'chartit:last'
-// v2: the default became one volume pane without moving averages
-const IND_KEY = 'chartit:indicators:v2'
 const UI_KEY = 'chartit:ui'
 
 const FALLBACK: Market = {
@@ -123,16 +124,17 @@ const drawings = new DrawingManager(chart, {
   onCountChange: n => dock.setCount(n),
   onSelect: (o, look) => dock.showProps(o, look),
   onToolDone: () => dock.select('cursor'),
-  onTextRequest: current => dialog({ title: 'Texto', input: current, ok: 'Listo' })
+  onTextRequest: current => dialog({ title: 'Texto', input: current, ok: 'Listo' }),
+  onContextMenu: o => drawingMenu.open(o)
 })
 const dock = new Dock(drawings)
+const drawingMenu = new DrawingMenu(drawings)
 
 // ----------------------------------------------------------------- header --
 
 $('brand').innerHTML = `${LOGO}<span>Chart<b>-It</b></span>`
 $('shotBtn').innerHTML = icon('camera')
 $('listBtn').innerHTML = icon('list')
-$('indBtn').innerHTML = `${icon('fx')}<span>Indicadores</span>`
 $('symCaret').innerHTML = icon('chevDown', 14)
 
 const tfPicker = new TimeframePicker(tf, t => setTimeframe(t))
@@ -253,66 +255,11 @@ void loadAllMarkets().then(({ markets, failed }) => {
 
 // ------------------------------------------------------------- indicators --
 
-const MAIN_IND: Array<[string, string]> = [
-  ['VOL', 'Volumen'], ['MA', 'Media móvil (MA)'], ['EMA', 'Media exponencial (EMA)'], ['BOLL', 'Bandas de Bollinger'], ['SAR', 'Parabólico SAR']
-]
-const SUB_IND: Array<[string, string]> = [
-  ['RSI', 'RSI'], ['MACD', 'MACD'], ['KDJ', 'Estocástico KDJ'],
-  ['OBV', 'On-Balance Volume'], ['CCI', 'CCI'], ['WR', 'Williams %R'], ['DMI', 'DMI / ADX']
-]
-let indicators = readJson<string[]>(IND_KEY, ['VOL'])
+new IndicatorsPanel(chart)
+applyPrefs(chart, readPrefs())
 
-function addIndicator(name: string): void {
-  if (name === 'VOL') {
-    showVolume(chart)
-  } else if (MAIN_IND.some(([n]) => n === name)) {
-    chart.createIndicator({ name, paneId: 'candle_pane' }, true)
-  } else {
-    chart.createIndicator(name)
-  }
-}
-if (!indicators.includes('VOL')) hideVolume(chart)
-indicators.forEach(addIndicator)
-
-const pop = $('indPopover')
-const indPopup = new Popup(pop, [$('indBtn')], { onOpen: () => {
-  renderIndicators()
-  placeBelow(pop, $('indBtn'))
-} })
-function renderIndicators(): void {
-  pop.innerHTML = ''
-  pop.appendChild(panelHeader('Indicadores', () => indPopup.close()))
-  const section = (title: string, list: Array<[string, string]>) => {
-    const h = document.createElement('h4')
-    h.textContent = title
-    pop.appendChild(h)
-    for (const [name, label] of list) {
-      const l = document.createElement('label')
-      const cb = document.createElement('input')
-      cb.type = 'checkbox'
-      cb.checked = indicators.includes(name)
-      cb.onchange = () => {
-        if (cb.checked) {
-          indicators.push(name)
-          addIndicator(name)
-        } else {
-          indicators = indicators.filter(n => n !== name)
-          if (name === 'VOL') hideVolume(chart)
-          else chart.removeIndicator({ name })
-        }
-        localStorage.setItem(IND_KEY, JSON.stringify(indicators))
-      }
-      const span = document.createElement('span')
-      span.textContent = label
-      const small = document.createElement('small')
-      small.textContent = name
-      l.append(cb, span, small)
-      pop.appendChild(l)
-    }
-  }
-  section('Sobre el gráfico', MAIN_IND)
-  section('En panel aparte', SUB_IND)
-}
+const shortcuts = new ShortcutsSheet()
+new SettingsMenu(chart, { onShortcuts: () => shortcuts.open(), beforeImport: () => drawings.flushSave() })
 
 // ------------------------------------------------------------- screenshot --
 
@@ -347,6 +294,9 @@ document.addEventListener('keydown', e => {
     if (k === 'z' && !e.shiftKey) {
       e.preventDefault()
       drawings.undo()
+    } else if (k === 'd') {
+      e.preventDefault()
+      drawings.duplicateSelected()
     } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
       e.preventDefault()
       drawings.redo()
@@ -358,6 +308,8 @@ document.addEventListener('keydown', e => {
     dock.select('cursor')
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
     drawings.removeSelected()
+  } else if (e.key === '?') {
+    shortcuts.toggle()
   } else if (e.key === '/') {
     e.preventDefault()
     search.open()

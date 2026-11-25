@@ -14,6 +14,7 @@ export interface SavedDrawing {
   extendData: unknown
   lock: boolean
   visible: boolean
+  zLevel?: number
   /** Chart-It's own style memo so the properties bar can show it */
   look?: Look
 }
@@ -22,6 +23,12 @@ export interface Look {
   color: string
   size: number
   dashed: boolean
+  /** Font size of text drawings */
+  textSize?: number
+}
+
+function styleOf(l: Look) {
+  return drawingStyles(l.color, l.size, l.dashed, l.textSize ?? 14)
 }
 
 export interface DrawingEvents {
@@ -29,6 +36,8 @@ export interface DrawingEvents {
   onSelect(overlay: Overlay | null, look: Look | null): void
   onToolDone(): void
   onTextRequest(current: string): Promise<string | null>
+  /** Right click on a drawing (it is already selected). */
+  onContextMenu?(overlay: Overlay): void
 }
 
 /**
@@ -87,7 +96,7 @@ export class DrawingManager {
       name,
       groupId: GROUP,
       mode: this.magnet ? 'weak_magnet' : 'normal',
-      styles: drawingStyles(look.color, look.size, look.dashed),
+      styles: styleOf(look),
       ...this.handlers()
     }
     const id = this.chart.createOverlay(create)
@@ -126,7 +135,7 @@ export class DrawingManager {
       for (const o of this.chart.getOverlays({ groupId: GROUP })) {
         if (o.currentStep === FINISHED) continue
         this.looks.set(o.id, { ...this.look })
-        this.chart.overrideOverlay({ id: o.id, styles: drawingStyles(this.look.color, this.look.size, this.look.dashed) })
+        this.chart.overrideOverlay({ id: o.id, styles: styleOf(this.look) })
       }
       this.ev.onSelect(null, null)
       return
@@ -134,7 +143,7 @@ export class DrawingManager {
     const look = { ...(this.looks.get(id) ?? this.look), ...patch }
     this.looks.set(id, look)
     this.look = { ...look }
-    this.chart.overrideOverlay({ id, styles: drawingStyles(look.color, look.size, look.dashed) })
+    this.chart.overrideOverlay({ id, styles: styleOf(look) })
     this.commit()
     this.select(id)
   }
@@ -151,6 +160,55 @@ export class DrawingManager {
     if (!this.selectedId) return
     this.chart.removeOverlay({ id: this.selectedId })
     this.select(null)
+  }
+
+  /** Copy of the selected drawing, a little to the right and up. */
+  duplicateSelected(): void {
+    const o = this.selectedOverlay()
+    if (!o) return
+    const px = this.chart.convertToPixel(o.points, { paneId: o.paneId }) as Array<{ x?: number; y?: number }>
+    const moved = this.chart.convertFromPixel(
+      px.map(p => ({ x: (p.x ?? 0) + 24, y: (p.y ?? 0) - 24 })),
+      { paneId: o.paneId }
+    ) as Array<Partial<Point>>
+    const look = { ...(this.looks.get(o.id) ?? this.look) }
+    const id = this.chart.createOverlay({
+      name: o.name,
+      groupId: GROUP,
+      points: moved.map(p => ({ timestamp: p.timestamp, value: p.value })),
+      styles: o.styles,
+      extendData: o.extendData,
+      zLevel: o.zLevel,
+      mode: this.magnet ? 'weak_magnet' : 'normal',
+      ...this.handlers()
+    })
+    if (typeof id === 'string') {
+      this.looks.set(id, look)
+      this.commit()
+      this.select(id)
+    }
+  }
+
+  hideSelected(): void {
+    const o = this.selectedOverlay()
+    if (!o) return
+    this.chart.overrideOverlay({ id: o.id, visible: false })
+    this.select(null)
+    this.commit()
+  }
+
+  /** Brings the selected drawing above (or below) every other one. */
+  reorderSelected(front: boolean): void {
+    const o = this.selectedOverlay()
+    if (!o) return
+    const levels = this.finished().map(x => x.zLevel ?? 0)
+    const z = front ? Math.max(0, ...levels) + 1 : Math.min(0, ...levels) - 1
+    this.chart.overrideOverlay({ id: o.id, zLevel: z })
+    this.commit()
+  }
+
+  private selectedOverlay(): Overlay | undefined {
+    return this.selectedId ? this.chart.getOverlays({ id: this.selectedId })[0] : undefined
   }
 
   async editSelectedText(): Promise<void> {
@@ -239,6 +297,7 @@ export class DrawingManager {
         // Right click never deletes by accident: it selects instead.
         event.preventDefault?.()
         this.select(event.overlay.id)
+        this.ev.onContextMenu?.(event.overlay)
       }
     }
   }
@@ -261,6 +320,7 @@ export class DrawingManager {
       extendData: o.extendData,
       lock: o.lock,
       visible: o.visible,
+      zLevel: o.zLevel || undefined,
       look: this.looks.get(o.id)
     }))
   }
@@ -296,6 +356,7 @@ export class DrawingManager {
         extendData: d.extendData,
         lock: d.lock,
         visible: d.visible,
+        zLevel: d.zLevel ?? 0,
         mode: this.magnet ? 'weak_magnet' : 'normal',
         ...this.handlers()
       })

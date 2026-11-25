@@ -40,6 +40,21 @@ export const drawingsDb = {
   },
   del(key: string): Promise<undefined> {
     return tx('readwrite', s => s.delete(key))
+  },
+  /** Every stored entry, for backups. */
+  async entries(): Promise<Array<[string, unknown]>> {
+    const db = await open()
+    return new Promise((resolve, reject) => {
+      const out: Array<[string, unknown]> = []
+      const req = db.transaction(STORE, 'readonly').objectStore(STORE).openCursor()
+      req.onsuccess = () => {
+        const c = req.result
+        if (!c) return resolve(out)
+        out.push([String(c.key), c.value])
+        c.continue()
+      }
+      req.onerror = () => reject(req.error)
+    })
   }
 }
 

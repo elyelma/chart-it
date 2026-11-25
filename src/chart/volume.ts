@@ -42,8 +42,24 @@ registerIndicator<Vol>({
   createTooltipDataSource: () => ({ name: '', calcParamsText: '', features: [], legends: [] })
 })
 
+export type PriceScale = 'normal' | 'logarithm' | 'percentage'
+
+let volumeOn = false
+let scale: PriceScale = 'normal'
+
 function priceAxisId(chart: Chart): string | undefined {
   return chart.getYAxes({ paneId: 'candle_pane' }).find(a => a.id !== AXIS)?.id
+}
+
+/** Scale type and padding of the price axis; the padding leaves room for the volume. */
+function applyPriceAxis(chart: Chart): void {
+  const id = priceAxisId(chart)
+  if (id) chart.overrideYAxis({ id, paneId: 'candle_pane', name: scale, gap: volumeOn ? PRICE_GAP_WITH : PRICE_GAP_WITHOUT })
+}
+
+export function setPriceScale(chart: Chart, s: PriceScale): void {
+  scale = s
+  applyPriceAxis(chart)
 }
 
 export function showVolume(chart: Chart): void {
@@ -57,13 +73,13 @@ export function showVolume(chart: Chart): void {
       return { ...r, from: 0, to, range: to, realFrom: 0, realTo: to, realRange: to, displayFrom: 0, displayTo: to, displayRange: to }
     }
   })
-  chart.createIndicator({ name: NAME, paneId: 'candle_pane', yAxisId: AXIS }, true)
-  const id = priceAxisId(chart)
-  if (id) chart.overrideYAxis({ id, paneId: 'candle_pane', gap: PRICE_GAP_WITH })
+  if (!chart.getIndicators({ name: NAME }).length) chart.createIndicator({ name: NAME, paneId: 'candle_pane', yAxisId: AXIS }, true)
+  volumeOn = true
+  applyPriceAxis(chart)
 }
 
 export function hideVolume(chart: Chart): void {
   chart.removeIndicator({ name: NAME })
-  const id = priceAxisId(chart)
-  if (id) chart.overrideYAxis({ id, paneId: 'candle_pane', gap: PRICE_GAP_WITHOUT })
+  volumeOn = false
+  applyPriceAxis(chart)
 }
