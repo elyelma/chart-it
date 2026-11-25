@@ -249,6 +249,67 @@ signal(false)
 
 // -------------------------------------------------------------- fibonacci --
 
+const FIB_KEY = 'chartit:fib-levels'
+export const DEFAULT_FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
+
+function readFibLevels(): number[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(FIB_KEY) ?? 'null') as unknown
+    if (Array.isArray(v) && v.length && v.every(n => typeof n === 'number' && Number.isFinite(n))) return v as number[]
+  } catch {
+    /* defaults */
+  }
+  return [...DEFAULT_FIB_LEVELS]
+}
+
+let fibLevels = readFibLevels()
+
+export function getFibLevels(): number[] {
+  return [...fibLevels]
+}
+
+/** Levels for every retracement drawing (each trader uses their own: 0.705, 0.886…). */
+export function setFibLevels(levels: number[]): void {
+  fibLevels = levels.length ? [...levels].sort((a, b) => a - b) : [...DEFAULT_FIB_LEVELS]
+  localStorage.setItem(FIB_KEY, JSON.stringify(fibLevels))
+}
+
+/**
+ * Retracement with the person's own levels. Same name and geometry as the
+ * library's version (level 0 at the second point, 1 at the first), so drawings
+ * made before keep their place.
+ */
+registerOverlay({
+  name: 'fibonacciLine',
+  totalStep: 3,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, overlay, bounding, chart }) => {
+    if (coordinates.length < 2) return []
+    const [p0, p1] = overlay.points
+    if (typeof p0?.value !== 'number' || typeof p1?.value !== 'number') return []
+    const precision = chart.getSymbol()?.pricePrecision ?? 2
+    const [c0, c1] = coordinates
+    const left = Math.min(c0.x, c1.x)
+    const figures: OverlayFigure[] = [
+      { type: 'line', attrs: { coordinates: [c0, c1] }, styles: { style: 'dashed', dashedValue: [3, 4], size: 1 } }
+    ]
+    for (const lv of fibLevels) {
+      const y = c1.y + (c0.y - c1.y) * lv
+      const price = p1.value + (p0.value - p1.value) * lv
+      figures.push({ type: 'line', attrs: { coordinates: [{ x: left, y }, { x: bounding.width, y }] } })
+      figures.push({
+        type: 'text',
+        ignoreEvent: true,
+        attrs: { x: left, y, text: `${lv}  ${price.toFixed(precision)}`, align: 'left', baseline: 'bottom' },
+        styles: { style: 'fill', backgroundColor: 'transparent', size: 11, paddingLeft: 2, paddingBottom: 2 }
+      })
+    }
+    return figures
+  }
+})
+
 const FIB_EXT = [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618]
 
 registerOverlay({

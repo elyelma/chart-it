@@ -1,4 +1,5 @@
 import type { CandleType, Chart } from 'klinecharts'
+import { DEFAULT_FIB_LEVELS, getFibLevels, setFibLevels } from '../chart/overlays'
 import { setPriceScale, type PriceScale } from '../chart/volume'
 import { FEEDBACK_URL } from '../config'
 import { drawingsDb } from '../store/db'
@@ -122,6 +123,41 @@ export class SettingsMenu {
     }
     body.appendChild(scales)
 
+    h('Niveles de Fibonacci')
+    const fib = document.createElement('form')
+    fib.className = 'fib-form'
+    const fibInput = document.createElement('input')
+    fibInput.value = getFibLevels().join(', ')
+    fibInput.spellcheck = false
+    fibInput.setAttribute('aria-label', 'Niveles de Fibonacci separados por coma')
+    const fibOk = document.createElement('button')
+    fibOk.type = 'submit'
+    fibOk.className = 'btn'
+    fibOk.textContent = 'Aplicar'
+    const fibReset = document.createElement('button')
+    fibReset.type = 'button'
+    fibReset.className = 'btn ghost'
+    fibReset.textContent = 'Original'
+    fibReset.onclick = () => {
+      setFibLevels(DEFAULT_FIB_LEVELS)
+      this.redrawFib()
+      this.render()
+    }
+    fib.onsubmit = e => {
+      e.preventDefault()
+      const levels = fibInput.value
+        .split(/[,;\s]+/)
+        .map(x => Number(x.replace('%', '')) / (x.includes('%') ? 100 : 1))
+        .filter(n => Number.isFinite(n) && n >= -5 && n <= 10)
+      if (!levels.length) return toast('Escribe niveles como 0, 0.382, 0.618, 1', 'error')
+      setFibLevels([...new Set(levels)])
+      this.redrawFib()
+      this.render()
+      toast('Niveles de Fibonacci actualizados en todos tus retrocesos.')
+    }
+    fib.append(fibInput, fibOk, fibReset)
+    body.appendChild(fib)
+
     h('Tus dibujos')
     const note = document.createElement('p')
     note.className = 'settings-note'
@@ -164,6 +200,12 @@ export class SettingsMenu {
       '<a href="/legal/licencias-terceros.txt" target="_blank" rel="noopener">Licencias</a>' +
       `<span>Chart-It ${__APP_VERSION__}</span>`
     body.appendChild(legal)
+  }
+
+  /** Retracements re-read the levels when they are redrawn. */
+  private redrawFib(): void {
+    // Restyling with nothing new makes the chart repaint every drawing.
+    this.chart.setStyles({})
   }
 
   private item(ic: string, title: string, sub: string, onClick: () => void, key?: string): HTMLElement {

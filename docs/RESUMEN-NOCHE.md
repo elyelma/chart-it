@@ -33,6 +33,7 @@ Todo está en GitHub (`elyelma/chart-it`, rama `main`), en commits separados por
 | Dibujos | **Posición riesgo/beneficio** (Q): entrada, objetivo, stop, % y R:R |
 | Barra inferior | **Lista de dibujos** del símbolo: ir a cada uno, ocultar, bloquear, borrar |
 | Herramientas | Cada herramienta recuerda el último estilo que le diste |
+| Fibonacci | **Niveles configurables** en Ajustes (ej. 0.705, 0.886). Se aplican a todos tus retrocesos, también a los ya dibujados |
 | Mismo activo | **Tus dibujos de BTC se ven en BTC de Binance, Bybit y Hyperliquid** (y el oro como GOLD/XAU). Interruptor en Ajustes, activado por defecto; tus dibujos actuales se copian la primera vez y la copia original queda intacta |
 | Precio | Punto **En vivo** (verde) / reconectando (ámbar) / sin conexión (rojo). Tras un corte, recarga las velas que faltaron |
 | Captura PNG | Pie con marca Chart-It, símbolo, temporalidad, fuente y fecha (sirve de publicidad al compartir) |
@@ -101,7 +102,6 @@ npm test
 
 ## 8. Siguiente (backlog v1.1, de `docs/LAUNCH.md`)
 
-- Niveles de Fibonacci configurables.
 - Visibilidad por temporalidad.
 - Inglés.
 - Dibujo táctil.
