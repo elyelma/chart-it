@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chart-It: gráficos con dibujos ilimitados. Cripto, índices, oro, petróleo y forex." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Chart-It</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand" id="brand"></div>
+      <button class="symbol-btn" id="symbolBtn" title="Buscar símbolo (Ctrl+K)">
+        <span class="sym-ticker" id="symTicker">—</span>
+        <span class="sym-src" id="symSrc"></span>
+      </button>
+      <button class="icon-btn star" id="starBtn" title="Añadir a la lista"></button>
+      <div class="tf-group" id="tfGroup" role="group" aria-label="Temporalidad"></div>
+      <button class="tb-btn" id="indBtn"></button>
+      <div class="spacer"></div>
+      <div class="quote" id="quote">
+        <span class="quote-price" id="quotePrice">—</span>
+        <span class="quote-change" id="quoteChange"></span>
+      </div>
+      <button class="icon-btn" id="shotBtn" title="Guardar imagen"></button>
+      <button class="icon-btn" id="listBtn" title="Lista de seguimiento"></button>
+    </header>
+
+    <main class="workspace">
+      <section class="chart-wrap">
+        <div id="chart" class="chart"></div>
+        <div class="chart-note" id="chartNote"></div>
+        <div class="chart-status" id="chartStatus" hidden></div>
+      </section>
+      <aside class="watchlist" id="watchlist">
+        <div class="wl-head">
+          <span>Mi lista</span>
+          <span class="wl-hint">clic para abrir</span>
+        </div>
+        <div class="wl-body" id="wlBody"></div>
+      </aside>
+    </main>
+
+    <div class="props" id="props" hidden></div>
+    <nav class="dock" id="dock" aria-label="Herramientas de dibujo"></nav>
+
+    <div class="popover" id="indPopover" hidden></div>
+
+    <div class="modal-backdrop" id="searchModal" hidden>
+      <div class="modal search-modal" role="dialog" aria-label="Buscar símbolo">
+        <div class="search-input-wrap">
+          <span class="search-icon" id="searchIcon"></span>
+          <input id="searchInput" type="text" placeholder="BTC, oro, nasdaq, EURUSD, NVDA…" autocomplete="off" spellcheck="false" />
+          <kbd>Esc</kbd>
+        </div>
+        <div class="chips" id="searchChips"></div>
+        <div class="results" id="searchResults"></div>
+        <div class="search-foot" id="searchFoot"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="dialog" hidden>
+      <div class="modal dialog" role="dialog">
+        <div class="dialog-title" id="dialogTitle"></div>
+        <textarea id="dialogText" rows="3"></textarea>
+        <p class="dialog-msg" id="dialogMsg"></p>
+        <div class="dialog-actions">
+          <button class="btn ghost" id="dialogCancel">Cancelar</button>
+          <button class="btn primary" id="dialogOk">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

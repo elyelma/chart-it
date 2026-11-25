@@ -1,0 +1,41 @@
+/** Chart-It's own icon set: 20×20, stroke = currentColor. */
+const P: Record<string, string> = {
+  cursor: '<path d="M5 3l10 6.5-4.3 1.2L13 16l-2 1-2.3-5.2L5 15z"/>',
+  brush: '<path d="M3 15c2.5 0 2.5-3 5-3s2 3 4.5 3S15 9 17 5"/><circle cx="17" cy="5" r="1.2" fill="currentColor"/>',
+  segment: '<path d="M4 16L16 4"/><circle cx="4" cy="16" r="1.6"/><circle cx="16" cy="4" r="1.6"/>',
+  rayLine: '<path d="M4 16L18 2"/><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="10" r="1.6"/>',
+  straightLine: '<path d="M1 19L19 1"/><circle cx="7" cy="13" r="1.6"/><circle cx="13" cy="7" r="1.6"/>',
+  horizontalStraightLine: '<path d="M1 10h18"/><circle cx="10" cy="10" r="1.6"/>',
+  horizontalRayLine: '<path d="M5 10h14"/><circle cx="5" cy="10" r="1.6"/>',
+  verticalStraightLine: '<path d="M10 1v18"/><circle cx="10" cy="10" r="1.6"/>',
+  parallelStraightLine: '<path d="M2 13L13 2M7 18L18 7"/>',
+  fibonacciLine: '<path d="M2 4h16M2 8h16M2 12h16M2 16h16" stroke-dasharray="0"/><path d="M4 16L16 4" opacity=".5"/>',
+  ciRect: '<rect x="3" y="5" width="14" height="10" rx="1.5"/>',
+  ciArrow: '<path d="M4 16L16 4M9 4h7v7"/>',
+  ciText: '<path d="M4 5V3.5h12V5M10 3.5v13M7.5 16.5h5"/>',
+  priceLine: '<path d="M3 10h9"/><path d="M12 6.5h5.5v7H12l-2.5-3.5z"/>',
+  ciMeasure: '<path d="M3 17V3M3 17h14"/><path d="M7 13l3-4 3 2 3-5" /><path d="M14 6h2v2"/>',
+  magnet: '<path d="M5 3v7a5 5 0 0010 0V3h-3v7a2 2 0 01-4 0V3z"/><path d="M5 6h3M12 6h3"/>',
+  stay: '<path d="M10 3a7 7 0 106.3 4"/><path d="M17 2v5h-5"/>',
+  eye: '<path d="M1.5 10S5 4 10 4s8.5 6 8.5 6-3.5 6-8.5 6-8.5-6-8.5-6z"/><circle cx="10" cy="10" r="2.5"/>',
+  eyeOff: '<path d="M3 3l14 14M8 4.3A8 8 0 0110 4c5 0 8.5 6 8.5 6a14 14 0 01-2.6 3.2M5.2 5.9A14 14 0 001.5 10S5 16 10 16a8 8 0 003.6-.9"/>',
+  undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>',
+  redo: '<path d="M13 5l4 4-4 4"/><path d="M17 9H8a5 5 0 000 10h2"/>',
+  trash: '<path d="M3 5h14M8 5V3h4v2M5 5l1 12h8l1-12"/>',
+  lock: '<rect x="4" y="9" width="12" height="9" rx="1.5"/><path d="M7 9V6a3 3 0 016 0v3"/>',
+  unlock: '<rect x="4" y="9" width="12" height="9" rx="1.5"/><path d="M7 9V6a3 3 0 015.8-1"/>',
+  camera: '<path d="M2.5 6.5h3l1.5-2h6l1.5 2h3v10h-15z"/><circle cx="10" cy="11" r="3"/>',
+  search: '<circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l5 5"/>',
+  star: '<path d="M10 2.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2-4.6-2.5-4.6 2.5.9-5.2L2.5 8l5.2-.7z"/>',
+  list: '<path d="M7 5h11M7 10h11M7 15h11"/><circle cx="3" cy="5" r="1" fill="currentColor"/><circle cx="3" cy="10" r="1" fill="currentColor"/><circle cx="3" cy="15" r="1" fill="currentColor"/>',
+  fx: '<path d="M4 17c2 0 2-2 3-7s1-7 3-7M4 8h6M11 9l5 7M16 9l-5 7"/>',
+  close: '<path d="M5 5l10 10M15 5L5 15"/>',
+  edit: '<path d="M13 3l4 4-9 9H4v-4z"/>',
+  dash: '<path d="M2 10h4M8 10h4M14 10h4"/>'
+}
+
+export function icon(name: string, size = 18): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] ?? ''}</svg>`
+}
+
+export const LOGO = `<svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#7C6CFF"/><path d="M6 21l6-6 4 4 9-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="9" r="2.5" fill="#36E2B4"/></svg>`
