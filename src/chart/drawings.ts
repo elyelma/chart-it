@@ -1,6 +1,6 @@
-import { getSupportedOverlays, type Chart, type DeepPartial, type Overlay, type OverlayCreate, type OverlayStyle, type Point } from 'klinecharts'
+import { getSupportedOverlays, type Chart, type Coordinate, type DeepPartial, type Overlay, type OverlayCreate, type OverlayMode, type OverlayPerformEventParams, type OverlayStyle, type Point } from 'klinecharts'
 import { drawingsDb } from '../store/db'
-import { FREEHAND_TOOLS, TEXT_TOOLS } from './overlays'
+import { FREEHAND_TOOLS, TEXT_TOOLS, withHandles } from './overlays'
 import { DRAW_COLORS, drawingStyles } from './theme'
 
 const GROUP = 'drawings'
@@ -45,6 +45,9 @@ function readToolLooks(): Record<string, Look> {
   }
 }
 const FINISHED = -1
+
+/** Tools whose first two points Shift lines up (flat, upright or at 45°). */
+const ALIGN_TOOLS = new Set(['segment', 'rayLine', 'straightLine', 'ciArrow', 'parallelStraightLine', 'priceChannelLine', 'fibonacciLine', 'ciMeasure'])
 const HISTORY_MAX = 200
 
 export interface SavedDrawing {
@@ -111,6 +114,8 @@ export class DrawingManager {
 
   magnet = false
   stayInTool = false
+  /** Keys held right now: Ctrl = magnet, Shift = line up. */
+  private held = { ctrl: false, shift: false }
   look: Look = { color: DRAW_COLORS[0], size: 2, dashed: false }
 
   constructor(private chart: Chart, private ev: DrawingEvents) {}
@@ -160,6 +165,7 @@ export class DrawingManager {
     const saved = Array.isArray(stored) ? stored : []
     if (this.marketId !== id) return
     this.lastSnapshot = JSON.stringify(saved)
+    this.savedSnap.set(this.key(id), this.lastSnapshot)
     this.pendingRestore = saved
     this.ev.onCountChange(saved.length)
   }
@@ -183,12 +189,15 @@ export class DrawingManager {
     const create: OverlayCreate = {
       name,
       groupId: GROUP,
-      mode: this.magnet ? 'weak_magnet' : 'normal',
+      mode: this.mode(),
       styles: styleOf(look),
       ...this.handlers()
     }
     const id = this.chart.createOverlay(create)
-    if (typeof id === 'string') this.looks.set(id, look)
+    if (typeof id === 'string') {
+      this.looks.set(id, look)
+      this.decorate(id)
+    }
   }
 
   /** Removes a drawing that was started but not finished. */
@@ -200,7 +209,67 @@ export class DrawingManager {
 
   setMagnet(on: boolean): void {
     this.magnet = on
-    for (const o of this.finished()) this.chart.overrideOverlay({ id: o.id, mode: on ? 'weak_magnet' : 'normal' })
+    this.applyMode()
+  }
+
+  /** Magnet on, by the button or by holding Ctrl. */
+  get magnetActive(): boolean {
+    return this.magnet || this.held.ctrl
+  }
+
+  /** Ctrl held: strong magnet. Shift held: lines snap flat, upright or to 45°. */
+  setHeldKeys(keys: { ctrl?: boolean; shift?: boolean }): void {
+    const ctrl = this.held.ctrl
+    Object.assign(this.held, keys)
+    if (ctrl !== this.held.ctrl) this.applyMode()
+  }
+
+  private mode(): OverlayMode {
+    return this.held.ctrl ? 'strong_magnet' : this.magnet ? 'weak_magnet' : 'normal'
+  }
+
+  /** Every drawing, the one in progress too, so it applies mid-gesture. */
+  private applyMode(): void {
+    const mode = this.mode()
+    for (const o of this.chart.getOverlays({ groupId: GROUP })) this.chart.overrideOverlay({ id: o.id, mode })
+  }
+
+  /** Hooks the line-up behaviour into a line drawing (the library calls these as points move). */
+  private decorate(id: string): void {
+    const o = this.chart.getOverlays({ id })[0] as (Overlay & Record<string, unknown>) | undefined
+    if (!o || !ALIGN_TOOLS.has(o.name)) return
+    for (const hook of ['performEventMoveForDrawing', 'performEventPressedMove'] as const) {
+      const own = o[hook] as ((p: OverlayPerformEventParams) => void) | null
+      o[hook] = (p: OverlayPerformEventParams) => {
+        if (this.held.shift) this.align(o, p)
+        own?.call(o, p)
+      }
+    }
+  }
+
+  /** Moves the point being dragged so the line from the other end is flat, upright or at 45° on screen. */
+  private align(o: Overlay, p: OverlayPerformEventParams): void {
+    const i = p.performPointIndex
+    const other = i === 0 ? p.points[1] : i === 1 ? p.points[0] : undefined
+    const me = p.performPoint
+    if (!other || other.value === undefined || me.value === undefined) return
+    const [a, b] = this.chart.convertToPixel([other, me], { paneId: o.paneId }) as Coordinate[]
+    if (!a || !b) return
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4)
+    const cos = Math.round(Math.cos(angle))
+    const sin = Math.round(Math.sin(angle))
+    if (sin === 0) {
+      me.value = other.value
+    } else if (cos === 0) {
+      me.timestamp = other.timestamp
+      me.dataIndex = other.dataIndex
+    } else {
+      const y = a.y + sin * Math.abs(dx)
+      const v = (this.chart.convertFromPixel([{ x: b.x, y }], { paneId: o.paneId }) as Array<Partial<Point>>)[0]?.value
+      if (v !== undefined) me.value = v
+    }
   }
 
   // -------------------------------------------------------------- selection --
@@ -311,10 +380,11 @@ export class DrawingManager {
       styles: o.styles,
       extendData: o.extendData,
       zLevel: this.zOf(o.id),
-      mode: this.magnet ? 'weak_magnet' : 'normal',
+      mode: this.mode(),
       ...this.handlers()
     })
     if (typeof id === 'string') {
+      this.decorate(id)
       this.looks.set(id, look)
       this.zs.set(id, this.zOf(o.id))
       this.commit()
@@ -410,6 +480,8 @@ export class DrawingManager {
   private handlers(): Partial<OverlayCreate> {
     return {
       onDrawEnd: ({ overlay }) => {
+        const full = withHandles(overlay.name, overlay.points)
+        if (full !== overlay.points) this.chart.overrideOverlay({ id: overlay.id, points: full })
         if (TEXT_TOOLS.has(overlay.name)) {
           void this.editText(overlay, true)
         } else {
@@ -505,16 +577,17 @@ export class DrawingManager {
       const id = this.chart.createOverlay({
         name: d.name,
         groupId: GROUP,
-        points: d.points,
+        points: withHandles(d.name, d.points),
         styles: d.styles,
         extendData: d.extendData,
         lock: d.lock,
         visible: d.visible,
         zLevel: z,
-        mode: this.magnet ? 'weak_magnet' : 'normal',
+        mode: this.mode(),
         ...this.handlers()
       })
       if (typeof id !== 'string') continue
+      this.decorate(id)
       this.zs.set(id, z)
       if (d.look) this.looks.set(id, d.look)
     }
@@ -541,11 +614,19 @@ export class DrawingManager {
   }
 
   private pendingSave: { key: string; snap: string } | null = null
+  /** What each key held when last read or written, for the safety copy. */
+  private savedSnap = new Map<string, string>()
 
   private scheduleSave(snap: string): void {
     if (!this.marketId) return
     this.ev.onCountChange(this.count())
-    this.pendingSave = { key: this.key(this.marketId), snap }
+    const key = this.key(this.marketId)
+    // Safety copy: a list that had drawings is about to be saved empty.
+    if (snap === '[]' && this.savedSnap.get(key) && this.savedSnap.get(key) !== '[]') {
+      drawingsDb.put(`${key}:antes-de-vaciar`, JSON.parse(this.savedSnap.get(key) as string)).catch(() => {})
+    }
+    this.savedSnap.set(key, snap)
+    this.pendingSave = { key, snap }
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = setTimeout(() => this.flushSave(), 250)
   }

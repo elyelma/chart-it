@@ -32,7 +32,17 @@ export function drawingStyles(color: string, size = 2, dashed = false, textSize 
     circle: { color: alpha(color, 0.1), borderColor: color, borderSize: size },
     arc: { color, size },
     text: { color, backgroundColor: 'transparent', borderColor: 'transparent', size: textSize, weight: 600, family: FONT },
-    point: { color, borderColor: alpha(color, 0.3), activeColor: color, activeBorderColor: alpha(color, 0.3), radius: 4, activeRadius: 5 }
+    // Edit handles: hollow rings that fill in under the pointer.
+    point: {
+      color: COLORS.bg,
+      borderColor: color,
+      borderSize: 2,
+      radius: 4.5,
+      activeColor: color,
+      activeBorderColor: alpha(color, 0.35),
+      activeBorderSize: 4,
+      activeRadius: 5.5
+    }
   }
 }
 

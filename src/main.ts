@@ -463,6 +463,20 @@ $('shotBtn').onclick = () => void snapshot().catch(() => toast('No se pudo crear
 
 const TOOL_KEYS = new Map(TOOLS.filter(t => t.key).map(t => [t.key as string, t.name]))
 
+// Held keys while drawing: Ctrl = magnet, Shift = line up. Read from every key and
+// mouse event so a key released outside the window cannot get stuck.
+function trackHeld(e: KeyboardEvent | MouseEvent): void {
+  const before = drawings.magnetActive
+  drawings.setHeldKeys({ ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey })
+  if (before !== drawings.magnetActive) dock.syncMagnet()
+}
+for (const type of ['keydown', 'keyup'] as const) document.addEventListener(type, trackHeld, true)
+for (const type of ['mousedown', 'mousemove'] as const) document.addEventListener(type, trackHeld, { capture: true, passive: true })
+window.addEventListener('blur', () => {
+  drawings.setHeldKeys({ ctrl: false, shift: false })
+  dock.syncMagnet()
+})
+
 document.addEventListener('keydown', e => {
   const target = e.target as HTMLElement
   const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable

@@ -36,6 +36,7 @@ export class Dock {
   private popup!: Popup
   private countEl!: HTMLElement
   private hideBtn!: HTMLButtonElement
+  private magnetBtn!: HTMLButtonElement
   /** Opens the list of drawings (wired in main). */
   listButton!: HTMLButtonElement
   private openGroups: Set<string>
@@ -223,17 +224,23 @@ export class Dock {
     return b
   }
 
+  /** Lights the magnet button while it is on (also while Ctrl is held). */
+  syncMagnet(): void {
+    this.magnetBtn.classList.toggle('on', this.dm.magnetActive)
+  }
+
   private buildActions(): void {
     this.countEl = document.createElement('div')
     this.countEl.className = 'count'
     this.actions.appendChild(this.countEl)
     this.actions.appendChild(vsep())
 
-    const magnet = this.actionBtn('magnet', 'Imán: pega los puntos a las velas')
+    const magnet = this.actionBtn('magnet', 'Imán: pega los puntos a las velas (o mantén Ctrl)')
     magnet.classList.add('toggle')
+    this.magnetBtn = magnet
     magnet.onclick = () => {
       this.dm.setMagnet(!this.dm.magnet)
-      magnet.classList.toggle('on', this.dm.magnet)
+      this.syncMagnet()
     }
     const stay = this.actionBtn('stay', 'Seguir dibujando con la misma herramienta')
     stay.classList.add('toggle')

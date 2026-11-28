@@ -1,4 +1,4 @@
-import { registerOverlay, type Coordinate, type OverlayFigure } from 'klinecharts'
+import { registerOverlay, type Coordinate, type OverlayFigure, type Point } from 'klinecharts'
 import { alpha, COLORS } from './theme'
 
 /**
@@ -10,12 +10,41 @@ function rectCorners(a: Coordinate, b: Coordinate): Coordinate[] {
   return [a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }]
 }
 
+type P = Partial<Point>
+const xOf = (p: P): P => ({ timestamp: p.timestamp, dataIndex: p.dataIndex })
+
+/**
+ * A rectangle is drawn with two opposite corners, then gets six handles:
+ * 0 and 1 are those corners, 2 and 3 the other two corners,
+ * 4 and 5 the middle of the left and right sides (they only move that side).
+ */
+function rectHandles(a: P, b: P): P[] {
+  const mid = a.value !== undefined && b.value !== undefined ? (a.value + b.value) / 2 : a.value
+  return [a, b, { ...xOf(a), value: b.value }, { ...xOf(b), value: a.value }, { ...xOf(a), value: mid }, { ...xOf(b), value: mid }]
+}
+
+/** The saved / drawn points of a drawing, with any handles its tool adds. */
+export function withHandles(name: string, points: P[]): P[] {
+  if (name === 'ciRect' && points.length === 2) return rectHandles(points[0], points[1])
+  return points
+}
+
 registerOverlay({
   name: 'ciRect',
   totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
+  performEventPressedMove: ({ points, performPointIndex: i, performPoint: p }) => {
+    if (points.length < 6) return
+    const a = { ...points[0] }
+    const b = { ...points[1] }
+    if (i === 2) Object.assign(a, xOf(p)), (b.value = p.value)
+    else if (i === 3) Object.assign(b, xOf(p)), (a.value = p.value)
+    else if (i === 4) Object.assign(a, xOf(p))
+    else if (i === 5) Object.assign(b, xOf(p))
+    rectHandles(a, b).forEach((h, k) => (points[k] = h))
+  },
   createPointFigures: ({ coordinates }) => {
     if (coordinates.length < 2) return []
     return [{ type: 'polygon', attrs: { coordinates: rectCorners(coordinates[0], coordinates[1]) }, styles: { style: 'stroke_fill' } }]

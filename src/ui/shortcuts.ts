@@ -9,6 +9,8 @@ const GENERAL: Array<[string, string]> = [
   ['Ctrl Y', 'Rehacer'],
   ['Ctrl D', 'Duplicar el dibujo seleccionado'],
   ['Supr', 'Borrar el dibujo seleccionado'],
+  ['Ctrl', 'Mantén: imán a las velas'],
+  ['Shift', 'Mantén: alinea líneas a 0°, 45° o 90°'],
   ['Esc', 'Cerrar lo abierto · soltar la herramienta'],
   ['?', 'Esta ayuda']
 ]
