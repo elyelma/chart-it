@@ -2,6 +2,7 @@
  * Tiny IndexedDB key-value store for drawings. Everything stays on the user's
  * device: no account, no server, no limits beyond the browser's own disk quota.
  */
+// Internal name from before the product was called Grafito: renaming it would lose everyone's drawings.
 const DB_NAME = 'chart-it'
 const STORE = 'drawings'
 

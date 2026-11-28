@@ -1,10 +1,10 @@
 /*
- * Chart-It service worker: makes the app open fast and installable.
+ * Grafito service worker: makes the app open fast and installable.
  * Only the app's own files are cached. Market data (exchange APIs and
  * websockets) always goes to the network and is never stored.
  */
 // Bump on releases that change the cached shell files (icons, manifest).
-const CACHE = 'chartit-v2'
+const CACHE = 'grafito-v3'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', event => {

@@ -1,8 +1,8 @@
-# Chart-It
+# Grafito
 
 Gráficos de precios con **dibujos ilimitados**. Abre un gráfico, dibuja todo lo que necesites y vuelve mañana: tus líneas siguen ahí. Sin cuentas, sin límites y rápido.
 
-Chart-It sirve **solo para graficar y dibujar**: no ejecuta operaciones, no conecta con cuentas de exchanges y no da recomendaciones de inversión.
+Grafito sirve **solo para graficar y dibujar**: no ejecuta operaciones, no conecta con cuentas de exchanges y no da recomendaciones de inversión.
 
 ## Funciones
 
@@ -28,15 +28,15 @@ Los precios se piden **directamente desde el navegador** a las APIs públicas de
 
 Los mercados no cripto son **contratos perpetuos que siguen a un subyacente**, no el subyacente en sí. Se etiquetan como tales (por ejemplo, `XYZ100 · Sigue al Nasdaq-100`) y pueden cotizar 24/7.
 
-Chart-It no está afiliado a ninguno de estos exchanges. La disponibilidad de cada fuente depende del país y de la red del usuario (por ejemplo, Binance y Bybit restringen el acceso desde Estados Unidos).
+Grafito no está afiliado a ninguno de estos exchanges. La disponibilidad de cada fuente depende del país y de la red del usuario (por ejemplo, Binance y Bybit restringen el acceso desde Estados Unidos).
 
 ## Privacidad
 
 - Sin cuentas ni base de datos propia.
 - Dibujos en **IndexedDB** y ajustes en **localStorage**, solo en el navegador del usuario.
-- Sin cookies de seguimiento ni publicidad. La tipografía (Inter) va incluida en el paquete.
+- Sin cookies, sin analítica, sin publicidad. La tipografía (Inter) va incluida en el paquete.
 
-Detalle en [`public/legal/privacidad.html`](public/legal/privacidad.html) y [`public/legal/terminos.html`](public/legal/terminos.html) (borradores pendientes de revisión legal).
+Todo en una página corta: [`public/legal/terminos.html`](public/legal/terminos.html).
 
 ## Desarrollo local
 
@@ -52,7 +52,7 @@ npm test         # pruebas unitarias (Vitest)
 
 ## Despliegue en Cloudflare Pages
 
-Chart-It es un sitio 100 % estático, así que entra en el plan gratuito.
+Grafito es un sitio 100 % estático, así que entra en el plan gratuito.
 
 1. En el panel de Cloudflare: **Workers & Pages → Create → Pages → Connect to Git** y elige este repositorio.
 2. Configuración de build:
@@ -68,7 +68,7 @@ Chart-It es un sitio 100 % estático, así que entra en el plan gratuito.
 ```
 index.html              Estructura de la interfaz
 public/                 Archivos servidos tal cual (favicon, páginas legales)
-  legal/                Términos, privacidad y licencias de terceros
+  legal/                Lo básico (uso y privacidad) y licencias de terceros
 src/
   main.ts               Arranque: gráfico, cabecera, búsqueda, teclado
   chart/                Dibujos (gestión, persistencia, deshacer), herramientas propias, tema, volumen
@@ -82,10 +82,14 @@ docs/LAUNCH.md          Auditoría de lanzamiento y backlog
 
 Para añadir una fuente de datos nueva basta con implementar la interfaz `Adapter` de `src/data/types.ts` y registrarla en `src/data/registry.ts`.
 
+## Apoyo
+
+Si `SUPPORT_EVM` en `src/config.ts` tiene una dirección EVM válida, aparece "Apoya Grafito ☕" en Ajustes y en la barra inferior. Vacío, no se muestra nada.
+
 ## Tecnología
 
 TypeScript + Vite, [KLineChart](https://github.com/klinecharts/KLineChart) (Apache 2.0) para el motor de gráficos e [Inter](https://github.com/rsms/inter) (SIL OFL 1.1) como tipografía. Avisos completos en [`public/legal/licencias-terceros.txt`](public/legal/licencias-terceros.txt).
 
 ## Licencia
 
-**Pendiente.** El titular todavía no eligió una licencia para el código de Chart-It. Mientras no se publique un archivo `LICENSE`, todos los derechos quedan reservados por el titular y este repositorio no concede permiso para copiar, modificar ni redistribuir el código.
+Grafito es freeware: usarlo es gratis. El código no tiene licencia abierta. Mientras no se publique un archivo `LICENSE`, todos los derechos quedan reservados por el titular y este repositorio no concede permiso para copiar, modificar ni redistribuir el código.

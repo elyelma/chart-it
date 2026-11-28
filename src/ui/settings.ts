@@ -2,6 +2,7 @@ import type { CandleType, Chart } from 'klinecharts'
 import { DEFAULT_FIB_LEVELS, getFibLevels, parseFibLevels, setFibLevels } from '../chart/overlays'
 import { setPriceScale, type PriceScale } from '../chart/volume'
 import { FEEDBACK_URL } from '../config'
+import { openSupport, supportAddress } from './support'
 import { drawingsDb } from '../store/db'
 import { dialog, toast } from './feedback'
 import { icon } from './icons'
@@ -171,7 +172,7 @@ export class SettingsMenu {
     }
     body.appendChild(share)
     body.appendChild(this.item('download', 'Descargar respaldo', 'Dibujos, listas y favoritos en un archivo', () => void this.exportBackup()))
-    body.appendChild(this.item('upload', 'Restaurar respaldo', 'Desde un archivo .json de Chart-It', () => this.pickBackup()))
+    body.appendChild(this.item('upload', 'Restaurar respaldo', 'Desde un archivo .json de Grafito', () => this.pickBackup()))
     const protectedNote = document.createElement('p')
     protectedNote.className = 'settings-note'
     body.appendChild(protectedNote)
@@ -189,13 +190,18 @@ export class SettingsMenu {
     if (FEEDBACK_URL) {
       body.appendChild(this.item('edit', 'Enviar comentarios', 'Ideas, errores, lo que quieras', () => window.open(FEEDBACK_URL, '_blank', 'noopener')))
     }
+    if (supportAddress) {
+      body.appendChild(this.item('coffee', 'Apoya Grafito', 'Invítame un café en USDT o USDC', () => {
+        this.popup.close()
+        void openSupport()
+      }))
+    }
     const legal = document.createElement('div')
     legal.className = 'settings-links'
     legal.innerHTML =
-      '<a href="/legal/terminos.html" target="_blank" rel="noopener">Términos</a>' +
-      '<a href="/legal/privacidad.html" target="_blank" rel="noopener">Privacidad</a>' +
+      '<a href="/legal/terminos.html" target="_blank" rel="noopener">Términos y privacidad</a>' +
       '<a href="/legal/licencias-terceros.txt" target="_blank" rel="noopener">Licencias</a>' +
-      `<span>Chart-It ${__APP_VERSION__}</span>`
+      `<span>Grafito ${__APP_VERSION__}</span>`
     body.appendChild(legal)
   }
 
@@ -230,11 +236,11 @@ export class SettingsMenu {
     }
     const drawings = Object.fromEntries(entries)
     const count = entries.reduce((n, [, v]) => n + (Array.isArray(v) ? v.length : 0), 0)
-    const data = { app: 'chart-it', version: 1, exportedAt: new Date().toISOString(), drawings, storage }
+    const data = { app: 'grafito', version: 1, exportedAt: new Date().toISOString(), drawings, storage }
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `chart-it-respaldo-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `grafito-respaldo-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 5000)
     localStorage.setItem('chartit:last-backup', String(Date.now()))
@@ -260,8 +266,8 @@ export class SettingsMenu {
       toast('Ese archivo no es un respaldo válido.', 'error')
       return
     }
-    if (data.app !== 'chart-it' || typeof data.drawings !== 'object' || !data.drawings) {
-      toast('Ese archivo no es un respaldo de Chart-It.', 'error')
+    if ((data.app !== 'grafito' && data.app !== 'chart-it') || typeof data.drawings !== 'object' || !data.drawings) {
+      toast('Ese archivo no es un respaldo de Grafito.', 'error')
       return
     }
     const drawings = Object.entries(data.drawings).filter(([k, v]) => k.startsWith('market:') && Array.isArray(v))

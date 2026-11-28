@@ -1,5 +1,8 @@
 # Chart-It · Auditoría de lanzamiento (v1)
 
+> **Nota (27 nov 2026):** el producto ahora se llama **Grafito**. Este documento es histórico: lo que dice de "Chart-It" aplica a Grafito.
+
+
 _Producto / Lanzamiento · 25 de noviembre de 2026 · basado en el código de `main` (commit `e8fb4ec`) más los cambios sin commit que el desarrollador tenía en curso ese día._
 
 > **Aviso:** este documento no es asesoría legal. Todo lo marcado con ⚖️ debe revisarlo un abogado antes de lanzar o de vender el producto.

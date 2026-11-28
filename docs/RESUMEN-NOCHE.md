@@ -1,5 +1,8 @@
 # Chart-It · Lo que se hizo esta noche (25 nov 2026)
 
+> **Nota (27 nov 2026):** el producto ahora se llama **Grafito**. Este documento es histórico: lo que dice de "Chart-It" aplica a Grafito.
+
+
 Trabajé de forma autónoma con un pequeño equipo de agentes:
 
 - **Desarrollo (yo):** construí todo lo de abajo y lo verifiqué en el navegador.

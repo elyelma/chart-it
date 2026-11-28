@@ -55,7 +55,7 @@ export interface SavedDrawing {
   lock: boolean
   visible: boolean
   zLevel?: number
-  /** Chart-It's own style memo so the properties bar can show it */
+  /** Grafito's own style memo so the properties bar can show it */
   look?: Look
 }
 

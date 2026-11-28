@@ -22,6 +22,7 @@ import { SymbolSearch } from './ui/symbolSearch'
 import { IndicatorsPanel } from './ui/indicators'
 import { applyPrefs, readPrefs, SettingsMenu } from './ui/settings'
 import { ShortcutsSheet } from './ui/shortcuts'
+import { openSupport, supportAddress } from './ui/support'
 import { TimeframePicker } from './ui/tfPicker'
 import { formatPrice, Watchlist } from './ui/watchlist'
 
@@ -205,7 +206,7 @@ const drawingList = new DrawingList(drawings, dock.listButton, () => market.pric
 
 // ----------------------------------------------------------------- header --
 
-$('brand').innerHTML = `${LOGO}<span>Chart<b>-It</b></span>`
+$('brand').innerHTML = `${LOGO}<span>Graf<b>ito</b></span>`
 $('shotBtn').innerHTML = icon('camera')
 $('listBtn').innerHTML = icon('list')
 $('symCaret').innerHTML = icon('chevDown', 14)
@@ -244,13 +245,23 @@ function renderHeader(): void {
   terms.rel = 'noopener'
   terms.textContent = 'Términos'
   note.appendChild(terms)
+  if (supportAddress) {
+    const tip = document.createElement('a')
+    tip.href = '#'
+    tip.textContent = 'Apoya ☕'
+    tip.onclick = e => {
+      e.preventDefault()
+      void openSupport()
+    }
+    note.append(' · ', tip)
+  }
   const star = $('starBtn')
   star.innerHTML = icon('star')
   star.classList.toggle('on', watchlist.has(market.id))
   star.title = watchlist.has(market.id) ? 'Quitar de la lista' : 'Añadir a la lista'
   star.setAttribute('aria-label', star.title)
   star.setAttribute('aria-pressed', String(watchlist.has(market.id)))
-  document.title = `${market.ticker} · Chart-It`
+  document.title = `${market.ticker} · Grafito`
 }
 
 // ---------------------------------------------------------- market / tf ---
@@ -414,32 +425,26 @@ async function snapshot(): Promise<void> {
   g.fillStyle = 'rgba(255,255,255,0.06)'
   g.fillRect(0, y, w, 1)
   const mid = y + foot / 2
-  // logo tile
-  const grad = g.createLinearGradient(14, mid - 9, 32, mid + 9)
-  grad.addColorStop(0, '#9686FF')
-  grad.addColorStop(1, '#6250E8')
-  g.fillStyle = grad
-  g.beginPath()
-  g.roundRect(14, mid - 9, 18, 18, 5)
-  g.fill()
-  g.strokeStyle = '#fff'
-  g.lineWidth = 1.8
-  g.lineCap = 'round'
-  g.lineJoin = 'round'
-  g.beginPath()
-  g.moveTo(17.5, mid + 3)
-  g.lineTo(21, mid - 0.5)
-  g.lineTo(23.3, mid + 1.8)
-  g.lineTo(28.5, mid - 4)
-  g.stroke()
+  // The app's own logo (same-origin SVG, so the canvas stays exportable).
+  try {
+    const logo = new Image()
+    logo.src = `${import.meta.env.BASE_URL}favicon.svg`
+    await logo.decode()
+    g.drawImage(logo, 13, mid - 10, 20, 20)
+  } catch {
+    g.fillStyle = COLORS.accent
+    g.beginPath()
+    g.roundRect(14, mid - 9, 18, 18, 5)
+    g.fill()
+  }
   g.textBaseline = 'middle'
   g.font = `600 13px ${FONT}`
   g.fillStyle = COLORS.textStrong
-  g.fillText('Chart-It', 40, mid)
+  g.fillText('Grafito', 40, mid)
   g.font = `500 12px ${FONT}`
   g.fillStyle = COLORS.text2
   const label = `${market.ticker} · ${tf.label} · ${adapterOf(market.source).label}`
-  g.fillText(label, 40 + g.measureText('Chart-It').width + 14, mid)
+  g.fillText(label, 40 + g.measureText('Grafito').width + 14, mid)
   g.textAlign = 'right'
   g.fillStyle = COLORS.text
   g.fillText(new Date().toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' }), w - 14, mid)
@@ -448,7 +453,7 @@ async function snapshot(): Promise<void> {
   if (!blob) throw new Error('canvas')
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `Chart-It_${market.ticker}_${tf.id}_${new Date().toISOString().slice(0, 10)}.png`
+  a.download = `Grafito_${market.ticker}_${tf.id}_${new Date().toISOString().slice(0, 10)}.png`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 5000)
 }
@@ -520,7 +525,7 @@ function maybeRemindBackup(count: number): void {
   localStorage.setItem(REMIND_KEY, String(now))
   toast(
     `Ya tienes ${count} dibujos aquí. Tus dibujos viven solo en este navegador: descarga un respaldo de vez en cuando desde Ajustes.` +
-      (isSafari ? ' En Safari, instala Chart-It en tu inicio para que no se borren tras 7 días sin visitarlo.' : ''),
+      (isSafari ? ' En Safari, instala Grafito en tu inicio para que no se borren tras 7 días sin visitarlo.' : ''),
     'info',
     12000
   )
@@ -558,7 +563,7 @@ const WELCOME_KEY = 'chartit:welcome-seen'
 if (!localStorage.getItem(WELCOME_KEY)) {
   const w = $('welcome')
   w.innerHTML = `
-    <div class="welcome-head">${LOGO}<b>Bienvenido a Chart-It</b></div>
+    <div class="welcome-head">${LOGO}<b>Bienvenido a Grafito</b></div>
     <p>Dibuja todo lo que quieras, sin límites. Gratis y sin cuenta.</p>
     <ul>
       <li><b>Dibujos</b> abre todas las herramientas. Marca ${icon('star', 13)} las que más uses y quedan abajo.</li>

@@ -1,8 +1,8 @@
-Chart-It — Avisos de licencias de terceros / Third-party license notices
+Grafito — Avisos de licencias de terceros / Third-party license notices
 =======================================================================
 
-Chart-It incluye software de terceros distribuido bajo las licencias que se
-reproducen abajo. Chart-It no está afiliado a sus autores.
+Grafito incluye software de terceros distribuido bajo las licencias que se
+reproducen abajo. Grafito no está afiliado a sus autores.
 
 -----------------------------------------------------------------------
 klinecharts 10.1.1 — Apache License 2.0

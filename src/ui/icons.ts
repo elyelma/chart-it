@@ -1,4 +1,4 @@
-/** Chart-It's own icon set: 20×20, stroke = currentColor. */
+/** Grafito's own icon set: 20×20, stroke = currentColor. */
 const P: Record<string, string> = {
   cursor: '<path d="M5 3l10 6.5-4.3 1.2L13 16l-2 1-2.3-5.2L5 15z"/>',
   brush: '<path d="M3 15c2.5 0 2.5-3 5-3s2 3 4.5 3S15 9 17 5"/><circle cx="17" cy="5" r="1.2" fill="currentColor"/>',
@@ -48,6 +48,7 @@ const P: Record<string, string> = {
   front: '<rect x="3" y="3" width="9" height="9" rx="1.5"/><rect x="8" y="8" width="9" height="9" rx="1.5" fill="currentColor" opacity=".25"/>',
   ciPosition: '<rect x="3" y="3" width="14" height="7" rx="1" fill="currentColor" opacity=".18"/><rect x="3" y="10" width="14" height="5" rx="1"/><path d="M3 10h14"/>',
   layers: '<path d="M10 3l7.5 4L10 11 2.5 7z"/><path d="M2.5 10.5L10 14.5l7.5-4M2.5 14L10 18l7.5-4"/>',
+  coffee: '<path d="M3.5 8h10v4.5a4 4 0 01-4 4h-2a4 4 0 01-4-4z"/><path d="M13.5 9.5h1.3a2.2 2.2 0 010 4.4h-1.6"/><path d="M7 2.8c-.8.9.8 1.7 0 2.7M10.2 2.8c-.8.9.8 1.7 0 2.7"/>',
   check: '<path d="M4.5 10.5l3.5 3.5 7.5-8"/>',
   dot: '<circle cx="10" cy="10" r="4" fill="currentColor" stroke="none"/>',
   magnet: '<path d="M5 3v7a5 5 0 0010 0V3h-3v7a2 2 0 01-4 0V3z"/><path d="M5 6h3M12 6h3"/>',
@@ -73,4 +74,4 @@ export function icon(name: string, size = 18): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] ?? ''}</svg>`
 }
 
-export const LOGO = `<svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="ci-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9686FF"/><stop offset="1" stop-color="#6250E8"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#ci-logo)"/><path d="M6 21l6-6 4 4 9-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25" cy="9" r="2.7" fill="#33D6A6"/></svg>`
+export const LOGO = `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 64 64"><defs><linearGradient id="grafito-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9A8BFF"/><stop offset="1" stop-color="#5A45E0"/></linearGradient></defs> <rect width="64" height="64" rx="15" fill="url(#grafito-logo)"/> <g stroke="#17112E" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"> <path d="M19 11 V21 M19 47 V55" fill="none"/> <rect x="11.5" y="20.5" width="15" height="27" rx="3.5" fill="#33D6A6"/> <path d="M15.5 25 V35" stroke="#B9F5E2" stroke-width="2.6"/> </g> <g transform="translate(26.8 45) rotate(-45) scale(0.88)" stroke="#17112E" stroke-width="3.953488372093023" stroke-linejoin="round" stroke-linecap="round"> <rect x="39" y="-6.5" width="8" height="13" rx="3.2" fill="#FF7FA3"/> <rect x="34" y="-6.5" width="6" height="13" fill="#D5DAE6"/> <rect x="12" y="-6.5" width="22.5" height="13" fill="#FFC83D"/> <path d="M12 -2.2 H34" stroke="#FFE08A" stroke-width="2.6"/> <path d="M0 0 L12 -6.5 V6.5 Z" fill="#F6CFA0"/> <path d="M0 0 L4.6 -2.5 V2.5 Z" fill="#17112E" stroke-width="2.3255813953488373"/> </g></svg>`

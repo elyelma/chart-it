@@ -20,7 +20,7 @@ vi.stubGlobal('localStorage', {
 
 vi.mock('../src/chart/volume', () => ({ setPriceScale: vi.fn() }))
 vi.mock('../src/chart/overlays', () => ({ DEFAULT_FIB_LEVELS: [], getFibLevels: () => [], setFibLevels: vi.fn() }))
-vi.mock('../src/config', () => ({ FEEDBACK_URL: '' }))
+vi.mock('../src/config', () => ({ FEEDBACK_URL: '', SUPPORT_EVM: '' }))
 vi.mock('../src/store/db', () => ({ drawingsDb: {} }))
 vi.mock('../src/ui/feedback', () => ({ dialog: vi.fn(), toast: vi.fn() }))
 vi.mock('../src/ui/popup', () => ({ panelHeader: vi.fn(), placeBelow: vi.fn(), Popup: class {} }))

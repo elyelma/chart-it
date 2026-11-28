@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 /**
- * Chart-It's own overlays, driven with edge data the way klinecharts would
+ * Grafito's own overlays, driven with edge data the way klinecharts would
  * call createPointFigures. The library needs a browser, so registerOverlay is
  * captured instead of run; the figures are plain objects we can inspect.
  */

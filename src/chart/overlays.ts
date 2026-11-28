@@ -2,7 +2,7 @@ import { registerOverlay, type Coordinate, type OverlayFigure } from 'klinechart
 import { alpha, COLORS } from './theme'
 
 /**
- * Chart-It's own drawing tools, on top of the library's built-in ones
+ * Grafito's own drawing tools, on top of the library's built-in ones
  * (segment, rays, horizontal/vertical lines, channel, fibonacci, brush...).
  */
 
