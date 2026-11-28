@@ -324,6 +324,19 @@ export function parseFibLevels(text: string): number[] | { error: string } {
   return [...new Set(out)]
 }
 
+/** Levels a single Fibonacci drawing was given in its own settings, if any. */
+export function ownLevels(extendData: unknown): number[] | null {
+  const lv = (extendData as { levels?: unknown } | null)?.levels
+  if (!Array.isArray(lv)) return null
+  const ok = lv.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+  return ok.length ? ok : null
+}
+
+/** The levels every retracement uses unless it has its own. */
+export function globalFibLevels(): number[] {
+  return [...fibLevels]
+}
+
 /** Levels for every retracement drawing (each trader uses their own: 0.705, 0.886…). */
 export function setFibLevels(levels: number[]): void {
   fibLevels = levels.length ? [...levels].sort((a, b) => a - b) : [...DEFAULT_FIB_LEVELS]
@@ -351,7 +364,7 @@ registerOverlay({
     const figures: OverlayFigure[] = [
       { type: 'line', attrs: { coordinates: [c0, c1] }, styles: { style: 'dashed', dashedValue: [3, 4], size: 1 } }
     ]
-    for (const lv of fibLevels) {
+    for (const lv of ownLevels(overlay.extendData) ?? fibLevels) {
       const y = c1.y + (c0.y - c1.y) * lv
       const price = p1.value + (p0.value - p1.value) * lv
       figures.push({ type: 'line', attrs: { coordinates: [{ x: left, y }, { x: bounding.width, y }] } })
@@ -366,7 +379,7 @@ registerOverlay({
   }
 })
 
-const FIB_EXT = [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618]
+export const FIB_EXT = [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618]
 
 registerOverlay({
   name: 'ciFibExtension',
@@ -381,7 +394,7 @@ registerOverlay({
     const left = Math.min(...coordinates.map(p => p.x))
     const right = Math.max(bounding.width, left)
     const precision = chart.getSymbol()?.pricePrecision ?? 2
-    for (const lv of FIB_EXT) {
+    for (const lv of ownLevels(overlay.extendData) ?? FIB_EXT) {
       const price = c + (b - a) * lv
       const y = yAxis.convertToPixel(price)
       figures.push({ type: 'line', attrs: { coordinates: [{ x: coordinates[2].x, y }, { x: right, y }] } })
@@ -539,6 +552,133 @@ registerOverlay({
   }
 })
 
+// ------------------------------------------------------- buy / sell position --
+
+/** Category of the open market, to name and size price steps (points or pips). */
+let unitCategory = 'crypto'
+export function setPriceUnitCategory(category: string): void {
+  unitCategory = category
+}
+
+export interface PriceUnit {
+  name: 'pips' | 'puntos'
+  size: number
+}
+
+/**
+ * Price steps people count in: pips on forex (0.0001, or 0.01 on yen pairs),
+ * whole points on indices, metals and coins worth 10 or more, and pips on
+ * cheap coins, where a whole point would be too big to mean anything.
+ */
+export function priceUnit(price: number): PriceUnit {
+  const p = Math.abs(price)
+  if (unitCategory === 'fx') return { name: 'pips', size: p >= 20 ? 0.01 : 0.0001 }
+  if (p >= 10) return { name: 'puntos', size: 1 }
+  return { name: 'pips', size: 0.0001 }
+}
+
+export function formatUnits(distance: number, unit: PriceUnit): string {
+  const n = Math.abs(distance) / unit.size
+  return `${n.toLocaleString('es-MX', { maximumFractionDigits: n < 100 ? 1 : 0 })} ${unit.name}`
+}
+
+/** Buy and sell planners. Not orders: Grafito never trades. */
+export const POSITION_TOOLS = new Set(['ciLong', 'ciShort'])
+/** Size of a fresh position on screen, in pixels: target and stop from the entry, and width. */
+export const POSITION_DEFAULT = { target: 70, stop: 35, width: 150 }
+
+/**
+ * Points of a position: 0 entry (left edge), 1 target and 2 stop (both on the
+ * left edge), 3 the right edge (at the entry price). One click places it.
+ */
+function positionTemplate(name: string, long: boolean): void {
+  registerOverlay({
+    name,
+    totalStep: 2,
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: true,
+    needDefaultYAxisFigure: true,
+    performEventPressedMove: ({ points, performPointIndex: i }) => {
+      if (points.length < 4) return
+      const [e, t, st, r] = points
+      Object.assign(t, xOf(e))
+      Object.assign(st, xOf(e))
+      if (i === 3 || i === 0) r.value = e.value
+      // A buy's target stays above the entry and its stop below (a sell, the other way).
+      const ev = e.value ?? 0
+      const clamp = (p: Partial<Point>, above: boolean) => {
+        if (typeof p.value !== 'number') return
+        if (above && p.value < ev) p.value = ev
+        if (!above && p.value > ev) p.value = ev
+      }
+      clamp(t, long)
+      clamp(st, !long)
+    },
+    createPointFigures: ({ coordinates, overlay, chart }) => {
+      if (!coordinates.length) return []
+      const e = coordinates[0]
+      const dir = long ? -1 : 1
+      const ty = coordinates[1]?.y ?? e.y + dir * POSITION_DEFAULT.target
+      const sy = coordinates[2]?.y ?? e.y - dir * POSITION_DEFAULT.stop
+      const x0 = e.x
+      const x1 = Math.max(coordinates[3]?.x ?? e.x + POSITION_DEFAULT.width, x0 + 24)
+      const pts = overlay.points
+      const entry = pts[0]?.value ?? 0
+      const target = pts[1]?.value
+      const stop = pts[2]?.value
+      const precision = chart.getSymbol()?.pricePrecision ?? 2
+      const unit = priceUnit(entry)
+      const zone = (y: number, color: string): OverlayFigure => ({
+        type: 'polygon',
+        attrs: { coordinates: [{ x: x0, y: e.y }, { x: x1, y: e.y }, { x: x1, y }, { x: x0, y }] },
+        styles: { style: 'stroke_fill', color: alpha(color, 0.14), borderColor: alpha(color, 0.5), borderSize: 1 }
+      })
+      const figures: OverlayFigure[] = [
+        zone(ty, COLORS.up),
+        zone(sy, COLORS.down),
+        { type: 'line', attrs: { coordinates: [{ x: x0, y: e.y }, { x: x1, y: e.y }] }, styles: { color: COLORS.textStrong, size: 1 } }
+      ]
+      if (typeof target !== 'number' || typeof stop !== 'number') return figures
+      const pct = (v: number) => (entry ? ((v - entry) / entry) * 100 : 0)
+      const sign = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}%`
+      const reward = Math.abs(target - entry)
+      const risk = Math.abs(entry - stop)
+      const tag = (y: number, above: boolean, text: string, bg: string): OverlayFigure => ({
+        type: 'text',
+        ignoreEvent: true,
+        attrs: { x: (x0 + x1) / 2, y: above ? y - 6 : y + 6, text, align: 'center', baseline: above ? 'bottom' : 'top' },
+        styles: {
+          style: 'fill', color: '#0A0D13', backgroundColor: bg, size: 11, weight: 600,
+          borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 3, paddingBottom: 3
+        }
+      })
+      const tUp = ty < e.y
+      figures.push(
+        tag(ty, tUp, `Objetivo ${target.toFixed(precision)} · ${formatUnits(reward, unit)} · ${sign(pct(target))}`, COLORS.up),
+        tag(sy, !tUp, `Stop ${stop.toFixed(precision)} · ${formatUnits(risk, unit)} · ${sign(pct(stop))}`, COLORS.down),
+        {
+          type: 'text',
+          ignoreEvent: true,
+          attrs: {
+            x: x1 + 6,
+            y: e.y,
+            text: `${long ? 'Compra' : 'Venta'} ${entry.toFixed(precision)} · R:R ${risk > 0 ? (reward / risk).toFixed(2) : '—'}`,
+            align: 'left',
+            baseline: 'middle'
+          },
+          styles: {
+            style: 'fill', color: COLORS.textStrong, backgroundColor: '#232833', size: 11, weight: 600,
+            borderRadius: 4, paddingLeft: 6, paddingRight: 6, paddingTop: 3, paddingBottom: 3
+          }
+        }
+      )
+      return figures
+    }
+  })
+}
+positionTemplate('ciLong', true)
+positionTemplate('ciShort', false)
+
 // ------------------------------------------------------------------ catalog --
 
 export interface ToolGroup {
@@ -598,7 +738,10 @@ export const TOOLS: ToolDef[] = [
   { name: 'ciMeasure', label: 'Medir', group: 'measure', key: 'm' },
   { name: 'ciPriceRange', label: 'Rango de precio', group: 'measure' },
   { name: 'ciDateRange', label: 'Rango de fechas', group: 'measure' },
-  { name: 'ciPosition', label: 'Posición (riesgo / beneficio)', group: 'measure', key: 'q' }
+  { name: 'ciLong', label: 'Posición de compra', group: 'measure', key: 'q' },
+  { name: 'ciShort', label: 'Posición de venta', group: 'measure', key: 'w' },
+  // Earlier planner (long or short read from the target): still shown and editable, no longer offered.
+  { name: 'ciPosition', label: 'Posición (versión anterior)' }
 ]
 
 /** Tools whose drawing asks for a text. */

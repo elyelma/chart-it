@@ -36,6 +36,8 @@ export class Dock {
   private popup!: Popup
   private countEl!: HTMLElement
   private hideBtn!: HTMLButtonElement
+  /** Opens the selected drawing's settings (the gear). */
+  onSettings: (() => void) | null = null
   private magnetBtn!: HTMLButtonElement
   /** Opens the list of drawings (wired in main). */
   listButton!: HTMLButtonElement
@@ -144,6 +146,12 @@ export class Dock {
     }
     if (o) {
       sep()
+      if (this.onSettings) {
+        const gear = this.pbtn(icon('gear', 20), 'Ajustes de este dibujo (doble clic)', false)
+        gear.classList.add('gear')
+        gear.onclick = () => this.onSettings?.()
+        add(gear)
+      }
       if (TEXT_TOOLS.has(o.name)) {
         const ed = this.pbtn(icon('edit', 20), 'Editar texto', false)
         ed.onclick = () => void this.dm.editSelectedText()

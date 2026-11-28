@@ -151,7 +151,7 @@ export class SettingsMenu {
       setFibLevels(levels)
       this.redrawFib()
       this.render()
-      toast('Niveles de Fibonacci actualizados en todos tus retrocesos.')
+      toast('Niveles actualizados en tus retrocesos (los que no tienen niveles propios en su ⚙).')
     }
     fib.append(fibInput, fibOk, fibReset)
     body.appendChild(fib)

@@ -1,6 +1,6 @@
 import { getSupportedOverlays, type Chart, type Coordinate, type DeepPartial, type Overlay, type OverlayCreate, type OverlayMode, type OverlayPerformEventParams, type OverlayStyle, type Point } from 'klinecharts'
 import { drawingsDb } from '../store/db'
-import { FREEHAND_TOOLS, TEXT_TOOLS, withHandles } from './overlays'
+import { FREEHAND_TOOLS, POSITION_DEFAULT, POSITION_TOOLS, TEXT_TOOLS, withHandles } from './overlays'
 import { DRAW_COLORS, drawingStyles } from './theme'
 
 const GROUP = 'drawings'
@@ -83,6 +83,8 @@ export interface DrawingEvents {
   onContextMenu?(overlay: Overlay): void
   /** Saving to the browser failed (disk full, private mode…). */
   onSaveError?(err: unknown): void
+  /** Double click on a drawing that is not a text: open its settings. */
+  onSettings?(overlay: Overlay): void
 }
 
 /**
@@ -421,8 +423,23 @@ export class DrawingManager {
     return this.zs.get(id) ?? 0
   }
 
-  private selectedOverlay(): Overlay | undefined {
+  /** The selected drawing, if any. */
+  selectedOverlay(): Overlay | undefined {
     return this.selectedId ? this.chart.getOverlays({ id: this.selectedId })[0] : undefined
+  }
+
+  /** Changes the selected drawing's points or own settings (its gear panel), as one undo step. */
+  updateSelected(patch: { points?: Array<Partial<Point>>; extendData?: unknown }): void {
+    const o = this.selectedOverlay()
+    if (!o) return
+    const change: Partial<OverlayCreate> & { id: string } = { id: o.id }
+    if (patch.points) {
+      const pts = patch.points.map(p => ({ timestamp: p.timestamp, dataIndex: p.dataIndex, value: p.value }))
+      change.points = withHandles(o.name, pts)
+    }
+    if ('extendData' in patch) change.extendData = patch.extendData
+    this.chart.overrideOverlay(change)
+    this.commit()
   }
 
   async editSelectedText(): Promise<void> {
@@ -480,7 +497,7 @@ export class DrawingManager {
   private handlers(): Partial<OverlayCreate> {
     return {
       onDrawEnd: ({ overlay }) => {
-        const full = withHandles(overlay.name, overlay.points)
+        const full = POSITION_TOOLS.has(overlay.name) ? this.positionPoints(overlay) : withHandles(overlay.name, overlay.points)
         if (full !== overlay.points) this.chart.overrideOverlay({ id: overlay.id, points: full })
         if (TEXT_TOOLS.has(overlay.name)) {
           void this.editText(overlay, true)
@@ -508,6 +525,10 @@ export class DrawingManager {
       },
       onDoubleClick: ({ overlay }) => {
         if (TEXT_TOOLS.has(overlay.name)) void this.editText(overlay)
+        else {
+          this.select(overlay.id)
+          this.ev.onSettings?.(overlay)
+        }
       },
       onRightClick: event => {
         // Right click never deletes by accident: it selects instead.
@@ -516,6 +537,30 @@ export class DrawingManager {
         this.ev.onContextMenu?.(event.overlay)
       }
     }
+  }
+
+  /** A position is placed with one click: its target, stop and width start at a default size on screen. */
+  private positionPoints(o: Overlay): Array<Partial<Point>> {
+    const e = o.points[0]
+    if (o.points.length !== 1 || !e) return o.points
+    const px = (this.chart.convertToPixel([e], { paneId: o.paneId }) as Coordinate[])[0]
+    if (!px) return o.points
+    const dir = o.name === 'ciLong' ? -1 : 1
+    const [t, st, r] = this.chart.convertFromPixel(
+      [
+        { x: px.x, y: px.y + dir * POSITION_DEFAULT.target },
+        { x: px.x, y: px.y - dir * POSITION_DEFAULT.stop },
+        { x: px.x + POSITION_DEFAULT.width, y: px.y }
+      ],
+      { paneId: o.paneId }
+    ) as Array<Partial<Point>>
+    const x = { timestamp: e.timestamp, dataIndex: e.dataIndex }
+    return [
+      { ...x, value: e.value },
+      { ...x, value: t?.value },
+      { ...x, value: st?.value },
+      { timestamp: r?.timestamp, dataIndex: r?.dataIndex, value: e.value }
+    ]
   }
 
   private async editText(o: Overlay, isNew = false): Promise<void> {

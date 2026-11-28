@@ -46,6 +46,8 @@ const P: Record<string, string> = {
   info: '<circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.5v.01"/>',
   copy: '<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2"/>',
   front: '<rect x="3" y="3" width="9" height="9" rx="1.5"/><rect x="8" y="8" width="9" height="9" rx="1.5" fill="currentColor" opacity=".25"/>',
+  ciLong: '<rect x="3" y="3" width="14" height="14" rx="2"/><path d="M3 11.5h14"/><path d="M7 8l3-3 3 3M10 5v5" stroke-width="1.6"/>',
+  ciShort: '<rect x="3" y="3" width="14" height="14" rx="2"/><path d="M3 8.5h14"/><path d="M7 12l3 3 3-3M10 15v-5" stroke-width="1.6"/>',
   ciPosition: '<rect x="3" y="3" width="14" height="7" rx="1" fill="currentColor" opacity=".18"/><rect x="3" y="10" width="14" height="5" rx="1"/><path d="M3 10h14"/>',
   layers: '<path d="M10 3l7.5 4L10 11 2.5 7z"/><path d="M2.5 10.5L10 14.5l7.5-4M2.5 14L10 18l7.5-4"/>',
   coffee: '<path d="M3.5 8h10v4.5a4 4 0 01-4 4h-2a4 4 0 01-4-4z"/><path d="M13.5 9.5h1.3a2.2 2.2 0 010 4.4h-1.6"/><path d="M7 2.8c-.8.9.8 1.7 0 2.7M10.2 2.8c-.8.9.8 1.7 0 2.7"/>',

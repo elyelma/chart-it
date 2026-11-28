@@ -12,7 +12,7 @@ export class DrawingMenu {
   private popup = new Popup(this.el, [])
   private at = { x: 0, y: 0 }
 
-  constructor(private dm: DrawingManager) {
+  constructor(private dm: DrawingManager, private onSettings?: () => void) {
     const chart = $('chart')
     // Remember where the right click happened; the chart reports the drawing a moment later.
     chart.addEventListener('pointerdown', e => {
@@ -55,6 +55,7 @@ export class DrawingMenu {
       s.className = 'cm-sep'
       m.appendChild(s)
     }
+    if (this.onSettings) item('gear', 'Ajustes…', () => this.onSettings?.())
     if (TEXT_TOOLS.has(o.name)) item('edit', 'Editar texto', () => void this.dm.editSelectedText())
     item('copy', 'Duplicar', () => this.dm.duplicateSelected(), 'Ctrl D')
     item(o.lock ? 'unlock' : 'lock', o.lock ? 'Desbloquear' : 'Bloquear', () => this.dm.toggleLockSelected())

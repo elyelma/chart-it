@@ -3,7 +3,7 @@ import './style.css'
 import './chart/overlays'
 import { init, type Chart, type KLineData } from 'klinecharts'
 import { DrawingManager } from './chart/drawings'
-import { TOOLS } from './chart/overlays'
+import { setPriceUnitCategory, TOOLS } from './chart/overlays'
 import { CHART_STYLES, COLORS, FONT } from './chart/theme'
 import { isBuilt, loadBars, subscribeBars } from './data/bars'
 import { adapterOf, cachedMarkets, fetchTickers, loadAllMarkets } from './data/registry'
@@ -14,6 +14,7 @@ import { assetKey } from './data/assets'
 import { requestPersistentStorage } from './store/db'
 import { DrawingMenu } from './ui/contextMenu'
 import { DrawingList } from './ui/drawingList'
+import { DrawingSettings } from './ui/drawingSettings'
 import { Dock } from './ui/dock'
 import { dialog, installTooltips, toast } from './ui/feedback'
 import { icon, LOGO } from './ui/icons'
@@ -184,10 +185,14 @@ const drawings = new DrawingManager(chart, {
     drawingList.refresh()
     maybeRemindBackup(n)
   },
-  onSelect: (o, look) => dock.showProps(o, look),
+  onSelect: (o, look) => {
+    dock.showProps(o, look)
+    drawingSettings.selectionChanged()
+  },
   onToolDone: () => dock.select('cursor'),
   onTextRequest: current => dialog({ title: 'Texto', input: current, ok: 'Listo' }),
   onContextMenu: o => drawingMenu.open(o),
+  onSettings: () => drawingSettings.open(),
   onSaveError: () => {
     if (saveErrorShown) return
     saveErrorShown = true
@@ -201,7 +206,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) drawings.flushSave()
 })
 const dock = new Dock(drawings)
-const drawingMenu = new DrawingMenu(drawings)
+const drawingSettings = new DrawingSettings(drawings, () => market.pricePrecision)
+dock.onSettings = () => drawingSettings.toggle()
+const drawingMenu = new DrawingMenu(drawings, () => drawingSettings.open())
 const drawingList = new DrawingList(drawings, dock.listButton, () => market.pricePrecision)
 
 // ----------------------------------------------------------------- header --
@@ -284,6 +291,7 @@ async function setMarket(m: Market): Promise<void> {
   // The person chose a market: a link still waiting for the catalog no longer applies.
   pendingHashId = null
   market = m
+  setPriceUnitCategory(m.category)
   lastBar = null
   quoteChange = null
   dock.select('cursor')
